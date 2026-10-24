@@ -1,0 +1,54 @@
+name: Validate the committed index
+
+# An index-only change reaches main two ways: the publish job, which validates
+# what it writes, and a hand edit or a merge. A merge can take `repo.json` from
+# one side and the backend views from the other — each side consistent on its
+# own, the result not — and Git reports no conflict because the files differ.
+#
+# `validate.yml` runs on pull requests, `build-and-release.yml` on code paths;
+# neither fires for a push that only touches `r/`, which is exactly the change
+# that left `r/opkg/index.json` describing 2026-10-22's 09:35 build while
+# `r/repo.json` described the 10:25 one. This workflow is that missing trigger:
+# the same consistency checks, without the package planning a code change needs.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'r/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pica-validate-index-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # The layout check treats the schema check as optional; installing it here
+      # means a descriptor with the wrong shape is caught as well.
+      - name: Install Python requirements
+        run: python -m pip install jsonschema
+
+      - name: Validate repo.json against its schema
+        run: python3 .github/scripts/validate_repo.py --quiet
+
+      # The committed tree, not a generated one: this is what a client fetches,
+      # and the backend views have to still be views of `repo.json`.
+      - name: Backend views must equal repo.json
+        run: python3 .github/scripts/validate_index_layout.py
+
+      - name: Refuse build archives in Git
+        run: python3 .github/scripts/check_no_binaries.py

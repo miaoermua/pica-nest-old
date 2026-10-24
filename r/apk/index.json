@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "mgr": "apk",
-  "generated_at": "2026-10-22T09:35:55.597619Z",
+  "generated_at": "2026-10-22T10:25:14.077986Z",
   "packages": [
     {
       "pkgname": "adguardhome",

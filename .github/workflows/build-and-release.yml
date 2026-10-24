@@ -334,7 +334,17 @@ jobs:
           name: Latest Packages
           files: ${{ steps.release_files.outputs.files }}
 
-      - name: Verify published assets are downloadable
+      # The bytes were just uploaded, so this is the first and only moment they
+      # can be compared with the index: `--verify-published` downloads each file
+      # this run built and checks its size and SHA-256, `--probe` HEADs the rest
+      # so a historical entry that 404s or changed size is at least reported.
+      #
+      # A failure here stops before the commit: the release holds the new files
+      # but no index points at them yet, and the previous index stays in place.
+      # Recovery is a re-run of this same workflow — it re-uploads the same
+      # filenames and commits an index built from what it just published. Nothing
+      # here is repaired by hand.
+      - name: Verify published assets match the index
         if: steps.index.outputs.changed == 'true'
         env:
           DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/download/latest
@@ -345,7 +355,7 @@ jobs:
             --download-base "$DOWNLOAD_BASE" \
             --artifacts-dir dist/packages \
             --require-file dist/release-files.txt \
-            --probe
+            --verify-published --probe
 
       - name: Guard against binaries entering Git
         if: steps.index.outputs.changed == 'true'

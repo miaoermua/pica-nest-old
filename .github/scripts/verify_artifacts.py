@@ -11,7 +11,13 @@ script checks the three things a client depends on:
    base. A null `download_url` makes `pica` fall back to
    `<repo>/packages/<filename>`, which is the path that put binaries in Git.
 3. **The target** — with `--probe`, HEAD each `download_url` so a broken Release
-   upload is caught before the index is committed.
+   upload is caught before the index is committed; with `--verify-published`,
+   download the entries this run built and compare the bytes with the index.
+
+A HEAD proves a URL answers, not that the bytes behind it are the ones the index
+describes: an upload that overwrote a filename with a rebuilt archive still
+answers 200, under a hash that now belongs to nothing. `--verify-published` is
+the only check that looks at what a client would actually receive.
 
 Artifacts are located by filename across one or more `--artifacts-dir`
 directories (`pica-pack` writes `repo.json` next to the artifact it describes).
@@ -31,7 +37,11 @@ import urllib.request
 
 SUFFIXES = {"opkg": "-opkg", "apk": "-apk", "pica": "-pica"}
 PROBE_TIMEOUT = 20
+# A published package is a few megabytes; the timeout covers a slow runner
+# reading it back, not a stalled connection.
+PUBLISHED_TIMEOUT = 120
 USER_AGENT = "pica-pkg-repo-ci/1.0 (+https://github.com/miaoermua/pica-pkg-repo)"
+GZIP_MAGIC = b"\x1f\x8b"
 
 
 def sha256_file(path):
@@ -96,17 +106,57 @@ def find_artifact(filename, directories):
 
 
 def probe(url):
-    """HEAD a published URL. Returns None on success, else a reason."""
+    """HEAD a published URL. Returns (reason, content-length); reason is None on success."""
     request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=PROBE_TIMEOUT) as response:
             if response.status != 200:
-                return f"HTTP {response.status}"
+                return f"HTTP {response.status}", None
+            length = response.headers.get("Content-Length")
+            return None, int(length) if length and length.isdigit() else None
     except urllib.error.HTTPError as error:
-        return f"HTTP {error.code}"
+        return f"HTTP {error.code}", None
     except (urllib.error.URLError, OSError, ValueError) as error:
-        return f"{type(error).__name__}: {error}"
-    return None
+        return f"{type(error).__name__}: {error}", None
+
+
+def fetch_published(url):
+    """GET a published asset. Returns (bytes, None) or (None, reason)."""
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=PUBLISHED_TIMEOUT) as response:
+            if response.status != 200:
+                return None, f"HTTP {response.status}"
+            body = response.read()
+    except urllib.error.HTTPError as error:
+        return None, f"HTTP {error.code}"
+    except (urllib.error.URLError, OSError, ValueError) as error:
+        return None, f"{type(error).__name__}: {error}"
+
+    # A captive portal or an error page can arrive with a 200. A package archive
+    # is a gzip stream; anything else is not the file the index named, whatever
+    # the status said.
+    if not body.startswith(GZIP_MAGIC):
+        head = body[:40].decode("utf-8", "replace").replace("\n", " ")
+        return None, f"not a gzip archive ({len(body)} bytes: {head!r})"
+    return body, None
+
+
+def check_published(pkg, url, errors):
+    """Compare the bytes a client would download with the index entry."""
+    filename = pkg["filename"]
+    body, reason = fetch_published(url)
+    if reason:
+        errors.append(f"{filename}: published asset is unusable: {reason}")
+        return
+
+    digest = hashlib.sha256(body).hexdigest()
+    expected = str(pkg.get("sha256", "")).lower()
+    if digest != expected:
+        errors.append(f"{filename}: published sha256 {digest} does not match index {expected}")
+    csize = pkg.get("csize")
+    if isinstance(csize, int) and csize > 0 and csize != len(body):
+        errors.append(f"{filename}: published size {len(body)} does not match index csize {csize}")
 
 
 def check_url(pkg, download_base, strict, errors, warnings):
@@ -207,6 +257,14 @@ def main():
         action="store_true",
         help="HEAD every download_url; required entries must download",
     )
+    parser.add_argument(
+        "--verify-published",
+        action="store_true",
+        help=(
+            "download every required download_url and compare its bytes with the index;"
+            " a HEAD only proves the URL answers, not which bytes it answers with"
+        ),
+    )
     parser.add_argument("--strict-all", action="store_true", help="treat historical artifacts strictly too")
     args = parser.parse_args()
 
@@ -247,11 +305,27 @@ def main():
             check_artifact(pkg, archive, strict, errors, warnings)
 
         url = check_url(pkg, args.download_base, strict, errors, warnings)
-        if args.probe and url and url not in probed:
+        if args.verify_published and url and strict:
+            # The local artifact above is what this run built; this is what a
+            # client would receive. Both have to agree with the index.
+            check_published(pkg, url, errors)
+        elif (args.probe or args.verify_published) and url and url not in probed:
             probed.add(url)
-            reason = probe(url)
+            reason, length = probe(url)
             if reason:
                 (errors if strict else warnings).append(f"{filename}: cannot download {url}: {reason}")
+            elif (
+                length is not None
+                and isinstance(pkg.get("csize"), int)
+                and pkg["csize"] > 0
+                and length != pkg["csize"]
+            ):
+                # Cheap size check on entries this run did not build: it catches
+                # a republished file and a missing one without downloading every
+                # historical artifact on every publish.
+                (errors if strict else warnings).append(
+                    f"{filename}: published size {length} does not match index csize {pkg['csize']}"
+                )
 
     for warning in warnings:
         print(f"warning: {warning}", file=sys.stderr)

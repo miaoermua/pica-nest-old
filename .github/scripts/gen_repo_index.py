@@ -187,6 +187,7 @@ def main():
 
     merged = {entry_key(pkg): pkg for pkg in existing.get("packages", [])}
     released = []
+    rebuilt = []
 
     for path in args.inputs:
         try:
@@ -218,7 +219,26 @@ def main():
             previous = merged.get(key)
             if previous and previous.get("pkgver") != pkg["pkgver"]:
                 print(f"note: {describe(key)}: {previous.get('pkgver')} -> {pkg['pkgver']}")
+            elif previous and previous.get("sha256") and previous["sha256"] != pkg.get("sha256"):
+                # Same filename, different bytes: the rolling release asset is
+                # overwritten before the index describing it is committed, so for
+                # a moment the published index and the published file disagree.
+                # That is a legitimate way to repair a package — it must not fail
+                # the run — but it should be visible instead of being inferred
+                # later from a hash that no longer matches anything.
+                rebuilt.append(key)
+                print(
+                    f"note: {describe(key)}: rebuilt at the same version {pkg['pkgver']} —"
+                    f" asset bytes change {previous['sha256'][:12]} ->"
+                    f" {str(pkg.get('sha256', ''))[:12]}"
+                )
             merged[key] = pkg
+
+    if rebuilt:
+        print(
+            f"note: {len(rebuilt)} package(s) rebuilt under an unchanged version: their release"
+            " assets are overwritten before the index that describes them is committed"
+        )
 
     if args.download_base:
         # Applied to every entry, not just this run's: a historical entry with a

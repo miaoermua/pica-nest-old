@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Tests for artifact/index verification and the release-file list."""
+import functools
 import hashlib
+import http.server
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -211,6 +215,50 @@ class ReleaseListTest(unittest.TestCase):
             # The list names the build-staging artifact so the publish job can
             # upload it; it no longer names a Git-tracked r/packages/ copy.
             self.assertEqual(lines, [f"build/opkg/{filename}"])
+
+    def test_a_rebuild_under_an_unchanged_version_is_reported(self):
+        """Same filename, new bytes.
+
+        The rolling release asset is overwritten before the index that describes
+        it is committed, so the run has to say so: a silent replacement is how a
+        published index ends up holding a hash no published file has.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "r").mkdir()
+            (root / "r/repo.json").write_text(json.dumps({"schema": 2, "packages": []}))
+            output = root / "build/opkg"
+            output.mkdir(parents=True)
+            filename = "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+            manifest = (
+                "pkgname = demo\npkgver = 1.0.0\npkgrel = 1\n"
+                "platform = all\narch = x86_64\npkgmgr = opkg\n"
+            )
+
+            def build_and_index(payload):
+                make_artifact(output / filename, manifest, {"pkgs/demo.ipk": payload})
+                (output / "repo.json").write_text(json.dumps({
+                    "schema": 2,
+                    "packages": [{
+                        "pkgname": "demo", "pkgver": "1.0.0", "pkgrel": "1",
+                        "pkgmgr": "opkg", "platform": "all", "arch": "x86_64",
+                        "filename": filename, "sha256": sha256(output / filename),
+                    }],
+                }))
+                return subprocess.run(
+                    [sys.executable, str(SCRIPTS / "gen_repo_index.py"),
+                     str(output / "repo.json"), "--repo", str(root / "r/repo.json")],
+                    cwd=root, capture_output=True, text=True,
+                )
+
+            first = build_and_index(b"first")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertNotIn("rebuilt under an unchanged version", first.stdout)
+
+            second = build_and_index(b"second")
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertIn("rebuilt at the same version", second.stdout)
+            self.assertIn("rebuilt under an unchanged version", second.stdout)
 
     def test_download_url_is_stamped_for_every_entry(self):
         """Historical entries need a URL too: their asset sits in the same
@@ -420,6 +468,133 @@ class MultiArchIndexTest(unittest.TestCase):
             by_arch = {pkg["arch"]: pkg["pkgver"] for pkg in merged}
             self.assertEqual(by_arch["x86_64"], "1.0.0", "the rebuilt arch is updated")
             self.assertEqual(by_arch["mipsel_24kc"], "0.9", "an untouched arch is left alone")
+
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    """The tests assert on the script's output, not on the server's request log."""
+
+    def log_message(self, *args):
+        pass
+
+
+class PublishedAssetVerificationTest(unittest.TestCase):
+    """`--verify-published` checks the bytes a client would receive.
+
+    A local artifact matching the index says nothing about what was uploaded:
+    the publish job keeps its own copy, and a filename overwritten with a
+    rebuilt archive still answers 200 under the old hash. These tests serve the
+    "published" bytes over a local HTTP server, so the check runs against a real
+    response rather than a stub.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.packages = self.root / "build/opkg"
+        self.packages.mkdir(parents=True)
+        self.published = self.root / "published"
+        self.published.mkdir()
+        self.index = self.root / "r/repo.json"
+        self.index.parent.mkdir(parents=True)
+
+        handler = functools.partial(QuietHandler, directory=str(self.published))
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+        self.tmp.cleanup()
+
+    def entry(self, path, payload=None):
+        """An index entry for an artifact built into the staging directory."""
+        manifest = (
+            "pkgname=demo\npkgver=1.0.0\npkgrel=1\n"
+            "platform=all\narch=x86_64\npkgmgr=opkg\n"
+        )
+        make_artifact(path, manifest, payload or {"root/etc/demo": b"x"})
+        return {
+            "pkgname": "demo", "pkgver": "1.0.0", "pkgrel": "1", "pkgmgr": "opkg",
+            "platform": "all", "arch": "x86_64", "filename": path.name,
+            "sha256": sha256(path), "csize": path.stat().st_size,
+            "download_url": f"{self.base}/{path.name}",
+        }
+
+    def write_index(self, entries):
+        self.index.write_text(json.dumps({"schema": 2, "packages": entries}), encoding="utf-8")
+
+    def run_verify(self, *extra, required=()):
+        command = [
+            sys.executable, str(SCRIPTS / "verify_artifacts.py"),
+            "--index", str(self.index), "--artifacts-dir", str(self.packages),
+            "--download-base", self.base,
+        ]
+        if required:
+            listing = self.root / "required.txt"
+            listing.write_text("\n".join(str(path) for path in required) + "\n", encoding="utf-8")
+            command += ["--require-file", str(listing)]
+        return subprocess.run(command + list(extra), cwd=self.root, capture_output=True, text=True)
+
+    def test_the_published_bytes_are_the_ones_the_index_describes(self):
+        artifact = self.packages / "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+        self.write_index([self.entry(artifact)])
+        shutil.copy(artifact, self.published / artifact.name)
+
+        result = self.run_verify("--verify-published", required=[artifact])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Verified 1 index entries (1 required).", result.stdout)
+
+    def test_a_republished_filename_under_new_bytes_fails(self):
+        artifact = self.packages / "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+        self.write_index([self.entry(artifact)])
+        # Same name, different archive: exactly what a second build uploaded
+        # over the first one looks like to a HEAD.
+        make_artifact(
+            self.published / artifact.name,
+            "pkgname=demo\npkgver=1.0.0\npkgrel=1\nplatform=all\narch=x86_64\npkgmgr=opkg\n",
+            {"root/etc/demo": b"rebuilt"},
+        )
+
+        result = self.run_verify("--verify-published", required=[artifact])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("published sha256", result.stderr)
+        self.assertIn("does not match index csize", result.stderr)
+
+    def test_an_error_page_is_not_mistaken_for_a_package(self):
+        artifact = self.packages / "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+        self.write_index([self.entry(artifact)])
+        (self.published / artifact.name).write_text("<html>rate limited</html>", encoding="utf-8")
+
+        result = self.run_verify("--verify-published", required=[artifact])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not a gzip archive", result.stderr)
+
+    def test_a_missing_published_asset_fails(self):
+        artifact = self.packages / "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+        self.write_index([self.entry(artifact)])
+
+        result = self.run_verify("--verify-published", required=[artifact])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("HTTP 404", result.stderr)
+
+    def test_a_historical_entry_is_probed_not_downloaded(self):
+        """One bad historical asset must not block an unrelated publish."""
+        artifact = self.packages / "demo-1.0.0-1-x86_64-opkg.pkg.tar.gz"
+        built = self.entry(artifact)
+        historical = dict(built, filename="other-0.9-1-x86_64-opkg.pkg.tar.gz")
+        historical["download_url"] = f"{self.base}/{historical['filename']}"
+        self.write_index([built, historical])
+        shutil.copy(artifact, self.published / artifact.name)
+        # If this were downloaded, the gzip check would reject it.
+        (self.published / historical["filename"]).write_text("<html>gone</html>", encoding="utf-8")
+
+        result = self.run_verify("--verify-published", "--probe", required=[artifact])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("published size", result.stderr, "the HEAD still reports the size drift")
+        self.assertNotIn("not a gzip archive", result.stderr, "it is never read as an archive")
 
 
 if __name__ == "__main__":
