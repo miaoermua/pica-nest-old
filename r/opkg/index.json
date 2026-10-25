@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "mgr": "opkg",
-  "generated_at": "2026-10-25T08:44:24.541868Z",
+  "generated_at": "2026-10-25T08:55:48.593199Z",
   "packages": [
     {
       "pkgname": "adguardhome",

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "mgr": "apk",
-  "generated_at": "2026-10-25T08:44:24.541868Z",
+  "generated_at": "2026-10-25T08:55:48.593199Z",
   "packages": [
     {
       "pkgname": "adguardhome",
@@ -1890,7 +1890,7 @@
       "platform": "amd64",
       "arch": "x86_64",
       "filename": "luci-app-tailscale-community-1.104.1-1-amd64-x86_64-apk.pkg.tar.gz",
-      "sha256": "4dc14222e5e2beefa0bf80b0688e7dd657a2e6c3c719208a3cc64d147bc2c41d",
+      "sha256": "84d0a20f9ebf474ae1ed6c309c3cf2b80ac35515bf97685c97c11bd8562809e3",
       "appname": "tailscale",
       "os": "openwrt",
       "branch": "master",
@@ -1905,7 +1905,7 @@
       "pica": "0.3.34",
       "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-app-tailscale-community-1.104.1-1-amd64-x86_64-apk.pkg.tar.gz",
       "size": 0,
-      "csize": 11981073,
+      "csize": 11977411,
       "manifest": {
         "app": [
           "luci-app-tailscale-community",
@@ -1917,7 +1917,7 @@
         "arch": "x86_64",
         "base": "luci-base",
         "branch": "master",
-        "builddate": "1792917834",
+        "builddate": "1792918529",
         "license": "GPL-3.0-or-later",
         "luci": "js2",
         "luci_desc": "LuCI support for Tailscale",
@@ -1946,7 +1946,7 @@
       "platform": "arm64",
       "arch": "aarch64_cortex-a53",
       "filename": "luci-app-tailscale-community-1.104.1-1-arm64-aarch64_cortex-a53-apk.pkg.tar.gz",
-      "sha256": "b489cb868a6300f9a261b7d831de2c30b94006c14eeec755a32c7d7743863dee",
+      "sha256": "ceb64c0e179d3535edb048cf81f6fc137ca3ef9cb7351c2e88f92bc05c9b887d",
       "appname": "tailscale",
       "os": "openwrt",
       "branch": "master",
@@ -1961,7 +1961,7 @@
       "pica": "0.3.34",
       "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-app-tailscale-community-1.104.1-1-arm64-aarch64_cortex-a53-apk.pkg.tar.gz",
       "size": 0,
-      "csize": 10859965,
+      "csize": 10856195,
       "manifest": {
         "app": [
           "luci-app-tailscale-community",
@@ -1973,7 +1973,7 @@
         "arch": "aarch64_cortex-a53",
         "base": "luci-base",
         "branch": "master",
-        "builddate": "1792917834",
+        "builddate": "1792918529",
         "license": "GPL-3.0-or-later",
         "luci": "js2",
         "luci_desc": "LuCI support for Tailscale",
@@ -2002,7 +2002,7 @@
       "platform": "arm64",
       "arch": "aarch64_cortex-a72",
       "filename": "luci-app-tailscale-community-1.104.1-1-arm64-aarch64_cortex-a72-apk.pkg.tar.gz",
-      "sha256": "7ab6c46ed974321fa4f07e91136d72e879aeb3ee52c7d7b3ee86b57b30481ad7",
+      "sha256": "b9b0445226ea3f7e1f5af3abf15684a325ade32daf222496cf19b35724ab678d",
       "appname": "tailscale",
       "os": "openwrt",
       "branch": "master",
@@ -2017,7 +2017,7 @@
       "pica": "0.3.34",
       "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-app-tailscale-community-1.104.1-1-arm64-aarch64_cortex-a72-apk.pkg.tar.gz",
       "size": 0,
-      "csize": 10861236,
+      "csize": 10857471,
       "manifest": {
         "app": [
           "luci-app-tailscale-community",
@@ -2029,7 +2029,7 @@
         "arch": "aarch64_cortex-a72",
         "base": "luci-base",
         "branch": "master",
-        "builddate": "1792917834",
+        "builddate": "1792918530",
         "license": "GPL-3.0-or-later",
         "luci": "js2",
         "luci_desc": "LuCI support for Tailscale",
@@ -2058,7 +2058,7 @@
       "platform": "arm64",
       "arch": "aarch64_generic",
       "filename": "luci-app-tailscale-community-1.104.1-1-arm64-aarch64_generic-apk.pkg.tar.gz",
-      "sha256": "1923f37cacc589910c476590c5b52665145058fd3ed7c8f3d47946b07ad350c1",
+      "sha256": "e2c10be95e547a9a2010e0b1f7cbc74219109d18166291e2ad50d5add7b3e2ba",
       "appname": "tailscale",
       "os": "openwrt",
       "branch": "master",
@@ -2073,7 +2073,7 @@
       "pica": "0.3.34",
       "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-app-tailscale-community-1.104.1-1-arm64-aarch64_generic-apk.pkg.tar.gz",
       "size": 0,
-      "csize": 10861244,
+      "csize": 10857399,
       "manifest": {
         "app": [
           "luci-app-tailscale-community",
@@ -2085,7 +2085,7 @@
         "arch": "aarch64_generic",
         "base": "luci-base",
         "branch": "master",
-        "builddate": "1792917835",
+        "builddate": "1792918530",
         "license": "GPL-3.0-or-later",
         "luci": "js2",
         "luci_desc": "LuCI support for Tailscale",
@@ -2114,7 +2114,7 @@
       "platform": "mipsel",
       "arch": "mipsel_24kc",
       "filename": "luci-app-tailscale-community-1.104.1-1-mipsel-mipsel_24kc-apk.pkg.tar.gz",
-      "sha256": "dcec1752b1be9e5ddebf8355f1874ef759ac3c037ba53cb8ddecba57e7503585",
+      "sha256": "951f5486f8a29de95d853b724ed090d6b2eaab7f393e3174fee11ae5bd3eae3d",
       "appname": "tailscale",
       "os": "openwrt",
       "branch": "master",
@@ -2129,7 +2129,7 @@
       "pica": "0.3.34",
       "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-app-tailscale-community-1.104.1-1-mipsel-mipsel_24kc-apk.pkg.tar.gz",
       "size": 0,
-      "csize": 10766016,
+      "csize": 10762245,
       "manifest": {
         "app": [
           "luci-app-tailscale-community",
@@ -2141,7 +2141,7 @@
         "arch": "mipsel_24kc",
         "base": "luci-base",
         "branch": "master",
-        "builddate": "1792917835",
+        "builddate": "1792918530",
         "license": "GPL-3.0-or-later",
         "luci": "js2",
         "luci_desc": "LuCI support for Tailscale",
