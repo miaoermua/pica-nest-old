@@ -6,15 +6,29 @@ and only the container's control metadata says so authoritatively.
 
 `.ipk` is read here: an outer tar whose `control.tar.gz` member holds `control`.
 
-`.apk` is **not** read, and that is a real limitation rather than an oversight.
-An `.apk` produced by apk-tools 3.x starts with `ADBd`, the ADB signature block
-of the apk database format. It is not the concatenated-gzip layout that
-`tar --ignore-zeros` was written for, so neither GNU tar nor BusyBox tar can
-open it — `unrecognized archive format` / `unrecognized option: ignore-zeros`
-respectively. Reading it needs an ADB-aware parser, and `apk adbdump` is the
-only tool that provides one. When that is unavailable the check is skipped
-with a warning instead of guessing from the filename, because a guessed name
-would defeat the purpose of the check.
+`.apk` comes in two shapes. The legacy one is concatenated gzip and `tar` opens
+it. The apk-tools 3.x one is the ADB container: it starts with `ADBd`, and
+neither GNU tar nor BusyBox tar can open it — `unrecognized archive format` /
+`unrecognized option: ignore-zeros` respectively. `apk adbdump` is the only
+tool that reads it properly, and it is not something a build can depend on
+being installed.
+
+So it is read here instead. The container is a single raw-deflate stream
+behind a four-byte `ADBd` header; inflated, it begins with an `ADB.pckg`
+segment — the package database — whose records hold the same fields a
+`control` file does. A record starts with the package name, and the byte after
+it is the length of the version string that follows, which is enough to tell a
+name from a length prefix without guessing:
+
+    adguardhome \\x0b 0.107.76-r1
+    ^^^^^^^^^^^ ^^^^^^ ^^^^^^^^^
+    name         len    version
+
+Three things have to agree before the name is believed — the name is made of
+package-name characters, the byte after it really is the length of the string
+that follows, and that string looks like a version. A container that fails
+any of them is reported as unreadable rather than as a name, because a
+guessed name would defeat the purpose of the check.
 
 The package name and architecture are read; dependency metadata is deliberately
 ignored because no backend in this repository resolves dependency graphs.
@@ -25,11 +39,26 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import zlib
 
 # APK signature block of the apk-tools 3.x (ADB) format, which tar cannot open.
 ADB_SIGNATURE = b"ADBd"
+# The package-database segment inside the inflated container.
+ADB_PACKAGE_SEGMENT = b"ADB.pckg"
+# magic, a 64-bit length, a 24-bit one and a 16-bit one.
+ADB_SEGMENT_HEADER = 21
 
 DEPENDENCY_KEYS = ("app", "base", "kmod", "app_i18n")
+
+# A package name as the feeds spell it. The alphabet is not all lowercase:
+# `UAmask` is spelled with capitals, so a pattern that demands lowercase
+# would refuse a package this repository publishes.
+_PACKAGE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+._-]*$")
+# A version as the feeds spell it: digits and dots, with an optional release
+# and an optional build identifier. LuCI packages carry the latter — a
+# vendor build of the interface, such as `26.236.50544~cb5d434` — so a
+# version that only allows `-r1` would refuse every one of them.
+_VERSION = re.compile(r"^\d+(?:\.\d+)*(?:[-~][0-9A-Za-z.+~]*)?$")
 
 
 def _extract(path, dest):
@@ -84,20 +113,78 @@ def _read_ipk_control(path, dest):
     return None
 
 
+def _inflate_adb(path):
+    """Return the inflated ADB container of an .apk, or None.
+
+    The container is one raw-deflate stream after the four-byte signature, so
+    it is inflated with a plain deflate decompressor at a four-byte offset —
+    which is why no zlib header is found anywhere in the file.
+    """
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read()
+    except OSError:
+        return None
+    if raw[:4] != ADB_SIGNATURE:
+        return None
+    try:
+        return zlib.decompressobj(-15).decompress(raw[4:])
+    except zlib.error:
+        return None
+
+
+def _read_adb_package(path):
+    """Return (package, version) from an apk-tools 3.x container, or (None, None).
+
+    The package database segment holds one record per package, each starting
+    with the package name. A single .apk carries one package here, so the first
+    record is the one. The name is only accepted when the byte after it
+    really is the length of the version string that follows — a name read out
+    of the wrong offset would otherwise look perfectly plausible.
+    """
+    inflated = _inflate_adb(path)
+    if inflated is None:
+        return None, None
+    if inflated[:8] != ADB_PACKAGE_SEGMENT:
+        return None, None
+
+    body = inflated[ADB_SEGMENT_HEADER:]
+    end = 0
+    while end < len(body) and body[end] >= 0x20:
+        end += 1
+    name = body[:end]
+    if not name or not _PACKAGE_NAME.match(name.decode("ascii", "replace")):
+        return None, None
+
+    # The byte after the name is the length of the version string.
+    if end >= len(body):
+        return None, None
+    length = body[end]
+    version = body[end + 1: end + 1 + length]
+    if len(version) != length or not _VERSION.match(version.decode("ascii", "replace")):
+        return None, None
+
+    return name.decode("ascii", "replace"), version.decode("ascii", "replace")
+
+
 def _read_apk_control(path, dest):
     """Return the control text of an .apk, or None when it cannot be read.
 
     Handles the legacy concatenated-gzip layout. The apk-tools 3.x (ADB)
-    layout is recognised and refused rather than half-parsed, because `tar`
-    cannot open it at all.
+    layout is read by `_read_adb_package` instead, which pulls the name and
+    version out of the package database rather than a `control` file.
     """
+    package, version = _read_adb_package(path)
+    if package is not None:
+        return f"Package: {package}\nVersion: {version}\n"
+
     try:
         with open(path, "rb") as handle:
             if handle.read(4) == ADB_SIGNATURE:
                 print(
-                    f"note: {os.path.basename(path)} is the apk-tools 3.x (ADB) format;"
-                    " tar cannot read it. Install apk-tools and use `apk adbdump`,"
-                    " or check the name against the manifest by hand."
+                    f"note: {os.path.basename(path)} is the apk-tools 3.x (ADB) format"
+                    " and its package database could not be read;"
+                    " the name was not verified against the manifest."
                 )
                 return None
     except OSError:
@@ -129,10 +216,10 @@ def container_pkgname(path):
 def container_metadata(path):
     """Return `Package:`, `Version:` and `Architecture:` of a container, or None.
 
-    `None` means the container could not be read: an ADB-format apk (apk-tools
-    3.x), a corrupt archive, or a missing `tar`. That is a distinct outcome
-    from "read and found no metadata"; callers report it as unverified instead
-    of treating it as a successful check.
+    `None` means the container could not be read: a corrupt archive, a missing
+    `tar`, or an ADB container whose package database does not parse. That is a
+    distinct outcome from "read and found no metadata"; callers report it as
+    unverified instead of treating it as a successful check.
     """
     extension = os.path.splitext(path)[1].lower()
     if extension not in (".ipk", ".apk"):
