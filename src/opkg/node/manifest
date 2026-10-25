@@ -1,0 +1,32 @@
+pkgname = node
+appname = node
+pkgver = 20.20.2
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine.
+url = https://nodejs.org/
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = opkg
+
+# The recipe tags the runtime with its V8 module ABI (`ABI_VERSION:=$(NODE_MODULE_VERSION)`,
+# 115 for the 20.x series), so the container installs as `node115`. The plain `node`
+# name the user asked for lives in pkgname/appname, which is what pica selects on.
+app = node115
+
+# Its own libraries (libstdcpp6, libopenssl3, zlib, libnghttp2-14, libcares, libatomic1)
+# are left to opkg from the container's control rather than repeated here: those names
+# carry the release's soname suffix, so `libstdcpp` in 24.10 is not spelled the same way
+# in every feed, and a name handed to `opkg install` that the device cannot resolve
+# fails the whole transaction instead of merely skipping an optional hint.
+
+# mipsel_24kc is absent from build.matrix on purpose: the recipe gates node on
+# `@HAS_FPU @(i386||x86_64||arm||aarch64||riscv64)`, and that target ships no node
+# container in either release feed.

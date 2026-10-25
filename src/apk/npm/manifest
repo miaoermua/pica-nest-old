@@ -1,0 +1,28 @@
+pkgname = npm
+appname = npm
+pkgver = 22.23.2
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = NPM is the package manager for Node.js.
+url = https://www.npmjs.com/
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# The runtime is its own package here rather than a container riding along, the
+# way the feed itself splits python3 from python3-pip. NPM cannot run without it,
+# so the recipe's `+node` is declared for apk to resolve from the device's feed.
+app = node-npm
+
+# The feed names the runtime by its V8 module ABI — `node127` for the 22.x series
+# this release ships, `node137` for 24.x — so the name follows the feed rather
+# than the friendly `node` a user types. A device on a different node series
+# needs this line re-checked against its own feed before the install will pass.
+base = node127

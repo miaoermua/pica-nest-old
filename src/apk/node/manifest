@@ -1,0 +1,30 @@
+pkgname = node
+appname = node
+pkgver = 22.23.2
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine.
+url = https://nodejs.org/
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# The recipe tags the runtime with its V8 module ABI (`ABI_VERSION:=$(NODE_MODULE_VERSION)`,
+# 127 for the 22.x series), so the container installs as `node127`. The plain `node`
+# name the user asked for lives in pkgname/appname, which is what pica selects on.
+app = node127
+
+# Its own libraries are left to apk from the container's own metadata rather than
+# declared here: they are soname-suffixed and spelled differently per release, and a
+# name apk cannot resolve fails the install instead of being ignored.
+
+# mipsel_24kc is absent from build.matrix on purpose: the recipe gates node on
+# `@HAS_FPU @(i386||x86_64||arm||aarch64||riscv64)`, and that target ships no node
+# container in either release feed.

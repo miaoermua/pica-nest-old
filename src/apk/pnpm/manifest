@@ -1,0 +1,31 @@
+pkgname = pnpm
+appname = pnpm
+pkgver = 11.15.1
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = Fast, disk space efficient package manager
+url = https://pnpm.io/
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# Wrapped, not self-packed: the container is the feed's own node-pnpm apk, so
+# what lands on the device is byte for byte what ImmortalWrt ships. The recipe
+# splits the runtime out the way it splits python3 from python3-pip — `+node`
+# only — so pnpm cannot run without it and the runtime is declared for apk to
+# resolve from the device's feed rather than carried here.
+app = node-pnpm
+
+# The feed names the runtime by its V8 module ABI — `node127` for the 22.x
+# series this release ships, `node115` for 20.x — so the name follows the feed
+# rather than the friendly `node` a user types. The opkg package declares
+# node115 for the same reason; a device on a newer node series needs this line
+# re-checked against its own feed before the install will pass.
+base = node127
