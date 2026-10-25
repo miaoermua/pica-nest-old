@@ -289,6 +289,12 @@ def manifest_dependencies(manifest_path):
     collected under their base key. `app_i18n` is collected with its `{lang}`
     template intact; [`declares_package`] matches it against a concrete
     language package.
+
+    A value is reduced to its package name before it is stored. The manifest
+    spells constraints the way `pica_pkg_core::constraint` reads them — a
+    version bound (`libfoo>=1.2`) and a trailing `?` for an optional one
+    (`xray-core?`) — and comparing a container's name against `xray-core?`
+    would never match.
     """
     declared = {key: set() for key in DEPENDENCY_KEYS}
     if not os.path.isfile(manifest_path):
@@ -301,8 +307,13 @@ def manifest_dependencies(manifest_path):
                 continue
             key, _, value = line.partition("=")
             key = key.strip().split(".", 1)[0].split("@", 1)[0]
-            if key in declared and value.strip():
-                declared[key].add(value.strip())
+            if key not in declared:
+                continue
+            # Keep a `{lang}` template whole: `declares_package` expands it into
+            # a pattern, so a value cut at the brace would never match.
+            name = re.split(r"[<>=]", value.strip(), maxsplit=1)[0].rstrip("?").strip()
+            if name:
+                declared[key].add(name)
     return declared
 
 

@@ -15,7 +15,12 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 
-from container_metadata import container_metadata, container_pkgname  # noqa: E402
+from container_metadata import (  # noqa: E402
+    container_metadata,
+    container_pkgname,
+    declares_package,
+    manifest_dependencies,
+)
 
 # The segment header of the package database: a magic, a 64-bit length, a
 # 24-bit one and a 16-bit one. Only the magic is load-bearing for the parser;
@@ -112,6 +117,45 @@ class AdbContainerTest(unittest.TestCase):
             path = Path(tmp) / "demo.apk"
             path.write_bytes(adb_apk("node-npm", "22.23.2-r1"))
             self.assertEqual(container_pkgname(str(path)), "node-npm")
+
+
+class ManifestDependencyTest(unittest.TestCase):
+    """The names a manifest declares, reduced to the names containers carry.
+
+    A manifest spells constraints the way the client reads them — `libfoo>=1.2`
+    for a version bound, a trailing `?` for an optional declaration. A container
+    installs under the bare name, so comparing against the raw text would say
+    every optional dependency is undeclared.
+    """
+
+    def declared(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest"
+            path.write_text(text, encoding="utf-8")
+            return manifest_dependencies(str(path))
+
+    def test_an_optional_marker_is_not_part_of_the_name(self):
+        declared = self.declared("app = luci-app-x\nbase = sing-box?\nbase = xray-core?\n")
+        self.assertIn("sing-box", declared["base"])
+        self.assertNotIn("sing-box?", declared["base"])
+        self.assertTrue(declares_package(declared, "sing-box"))
+
+    def test_a_version_bound_is_not_part_of_the_name(self):
+        declared = self.declared("app = luci-app-x\nbase = libfoo>=1.2\nbase = bar<2?\n")
+        self.assertEqual(declared["base"], {"libfoo", "bar"})
+
+    def test_a_language_template_is_kept_whole(self):
+        """`{lang}` has to survive: it is expanded into a pattern, not compared."""
+        declared = self.declared("app = luci-app-x\napp_i18n = luci-i18n-x-{lang}\n")
+        self.assertEqual(declared["app_i18n"], {"luci-i18n-x-{lang}"})
+        self.assertTrue(declares_package(declared, "luci-i18n-x-zh-cn"))
+        self.assertFalse(declares_package(declared, "luci-i18n-other-zh-cn"))
+
+    def test_the_container_name_is_what_matches(self):
+        """`app` holds the container's own name, which is what gets installed."""
+        declared = self.declared("app = luci-app-passwall\nbase = luci-base\n")
+        self.assertTrue(declares_package(declared, "luci-app-passwall"))
+        self.assertFalse(declares_package(declared, "passwall"))
 
 
 if __name__ == "__main__":
