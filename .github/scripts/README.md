@@ -15,6 +15,8 @@
 ### 2. `gen_repo_index.py` (索引聚合器)
 它是仓库的“索引师”，负责在每个 CI 周期完成后，扫描 `build_output` 下的所有包，合并生成单一的 `repo.json` 索引文件。
 
+输入是 `pica-pack` 写出的每后端索引 `build_output/<mgr>/index.json`（0.4.0 起是这个名字与格式；0.3.x 的 `repo.json` 仍能被读）。条目字段两版一致，只是外层信封不同。
+
 同一次运行里它还写出 `r/` 的其余文件：`index.json`（入口描述）与 `r/<mgr>/index.json`（各后端视图）。
 视图由 `repo.json` 派生（实现在 `repo_layout.py`），不另行维护 —— 否则两者迟早会各说各话。
 

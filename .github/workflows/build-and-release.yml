@@ -88,8 +88,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: miaoermua/pica
-          # TEMPORARY: 0.3.33 is on the `apk` branch; main is still 0.3.0.
-          ref: apk
+          # The `apk` branch held the 0.3.33 packer while main was still on
+          # 0.3.0. It has since been merged into main and deleted, so naming
+          # it here made the checkout fail with "couldn't find remote ref".
+          # main is 0.4.0: it writes a per-backend `index.json` instead of a
+          # single `repo.json`, which the steps below account for.
+          ref: main
           path: pica-source
 
       - name: Resolve pica commit
@@ -180,14 +184,14 @@ jobs:
           DOWNLOAD_BASE: https://github.com/${{ github.repository }}/releases/download/latest
         run: |
           set -euo pipefail
-          if ! ls build_output/*/repo.json > /dev/null 2>&1; then
+          if ! ls build_output/*/index.json > /dev/null 2>&1; then
             echo "error: no package was built" >&2
             exit 1
           fi
 
           # The artifact list lives in $RUNNER_TEMP, not under r/: nothing in a
           # Git-tracked directory may describe build output.
-          python3 .github/scripts/gen_repo_index.py build_output/*/repo.json \
+          python3 .github/scripts/gen_repo_index.py build_output/*/index.json \
             --download-base "$DOWNLOAD_BASE" \
             --release-list "$RUNNER_TEMP/release-files.txt"
           python3 .github/scripts/validate_repo.py --quiet
@@ -225,10 +229,10 @@ jobs:
             # this same directory is restored as dist/.
             echo "dist/packages/$name" >> dist/release-files.txt
           done < "$RUNNER_TEMP/release-files.txt"
-          for repo in build_output/*/repo.json; do
-            backend=$(basename "$(dirname "$repo")")
+          for index in build_output/*/index.json; do
+            backend=$(basename "$(dirname "$index")")
             mkdir -p "dist/build_output/$backend"
-            cp "$repo" "dist/build_output/$backend/repo.json"
+            cp "$index" "dist/build_output/$backend/index.json"
           done
           if [ -s dist/release-files.txt ]; then
             echo "has_artifacts=true" >> "$GITHUB_OUTPUT"
@@ -275,7 +279,7 @@ jobs:
           set -euo pipefail
           # No artifacts are copied into a Git-tracked path. The index names the
           # Release asset; the release is where the bytes live.
-          python3 .github/scripts/gen_repo_index.py dist/build_output/*/repo.json \
+          python3 .github/scripts/gen_repo_index.py dist/build_output/*/index.json \
             --download-base "$DOWNLOAD_BASE" \
             --artifacts-dir dist/packages
           python3 .github/scripts/validate_index_layout.py --quiet

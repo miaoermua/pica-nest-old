@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
-"""Merge the repo.json files that `pica-pack` emits into one repo index.
+"""Merge the index files that `pica-pack` emits into one repo index.
 
-`pica-pack` already writes a schema 2 `repo.json` next to each artifact, built
-from `pica_pkg_core::manifest::Manifest`. That output is the authority on what
+`pica-pack` writes the index next to each artifact, built from
+`pica_pkg_core::manifest::Manifest`. That output is the authority on what
 went into a package: it carries the required `pkgmgr`, keeps repeated manifest
 fields such as `base`/`app` as arrays, and derives the filename suffix from
 `pkgmgr`. Re-parsing manifests here would undo all of that, so this script only
 merges, validates and rewrites URLs.
+
+The packer changed the shape of that file in 0.4.0, and both shapes are
+accepted so a source can move between packer versions without a coordinated
+change:
+
+* 0.3.x wrote `repo.json` — schema 2, one file holding every package of one
+  build, the backend named by each entry's `pkgmgr`.
+* 0.4.0 writes `index.json` per backend — schema 1, a `mgr` field naming the
+  backend, and the same package entries underneath.
+
+Only the envelope differs. The entries are identical, which is why the merge
+below does not care which one it was handed.
 
 Artifacts are **not** copied anywhere. The distribution design keeps binaries
 in GitHub Releases; the repository tracks metadata only. The client resolves a
@@ -37,7 +49,7 @@ which is why they are written here rather than by a step of their own, where
 they could drift.
 
 Usage:
-    gen_repo_index.py --download-base URL [--repo REPO_JSON] <repo.json>...
+    gen_repo_index.py --download-base URL [--repo REPO_JSON] <index.json>...
 """
 import argparse
 import datetime
@@ -51,6 +63,9 @@ import repo_layout  # noqa: E402  (path set above so the script runs from anywhe
 
 # Mirrors REPO_SCHEMA in crates/pica-pkg-core/src/repo.rs.
 REPO_SCHEMA = 2
+# Mirrors BACKEND_INDEX_SCHEMA in the same file: the per-backend index 0.4.0
+# writes instead of a single repo.json.
+BACKEND_INDEX_SCHEMA = 1
 PKG_EXTENSION = ".pkg.tar.gz"
 # Mirrors SUPPORTED_PKGMGRS in the same file.
 SUPPORTED_PKGMGRS = ("opkg", "apk", "pica")
@@ -58,13 +73,30 @@ DEFAULT_REPO_JSON = "r/repo.json"
 
 
 def load_pack_repo(path):
-    """Load one `pica-pack` repo.json, verifying it is the schema we expect."""
+    """Load one index that `pica-pack` emitted, verifying it is a schema we expect.
+
+    Two envelopes are accepted: the 0.3.x `repo.json` (schema 2) and the 0.4.0
+    per-backend `index.json` (schema 1 with a `mgr` field). The backend of a
+    backend index is named once, at the top, so its entries are checked against
+    it — the same check `parse_backend_index` makes in the client, because a
+    file that disagrees with itself is a build that mislabelled an artifact.
+    """
     with open(path, "r", encoding="utf-8") as handle:
         index = json.load(handle)
 
     schema = index.get("schema")
-    if schema != REPO_SCHEMA:
-        raise ValueError(f"{path}: schema must be {REPO_SCHEMA}, got {schema!r}")
+    mgr = index.get("mgr")
+    if mgr is None:
+        if schema != REPO_SCHEMA:
+            raise ValueError(f"{path}: schema must be {REPO_SCHEMA}, got {schema!r}")
+    else:
+        if schema != BACKEND_INDEX_SCHEMA:
+            raise ValueError(
+                f"{path}: a backend index must have schema {BACKEND_INDEX_SCHEMA},"
+                f" got {schema!r}"
+            )
+        if mgr not in SUPPORTED_PKGMGRS:
+            raise ValueError(f"{path}: unsupported backend {mgr!r}")
     if not isinstance(index.get("packages"), list):
         raise ValueError(f"{path}: packages must be an array")
 
@@ -75,6 +107,11 @@ def load_pack_repo(path):
                 raise ValueError(f"{path}: package {label} missing {field}")
         if pkg["pkgmgr"] not in SUPPORTED_PKGMGRS:
             raise ValueError(f"{path}: package {label} has unsupported pkgmgr {pkg['pkgmgr']!r}")
+        if mgr is not None and pkg["pkgmgr"] != mgr:
+            raise ValueError(
+                f"{path}: package {label} says pkgmgr {pkg['pkgmgr']!r}"
+                f" but the index declares {mgr!r}"
+            )
         if not pkg["filename"].endswith(PKG_EXTENSION):
             raise ValueError(f"{path}: {label} filename must end with {PKG_EXTENSION}")
     return index
@@ -108,10 +145,10 @@ def asset_url(base, filename):
 
 
 def locate_artifact(source_dir, filename, extra_dirs):
-    """Find an artifact, preferring the directory its repo.json sits in.
+    """Find an artifact, preferring the directory its index sits in.
 
     `pica-pack` writes both together. The publish job restores them separately
-    (`dist/build_output/<backend>/repo.json`, `dist/packages/<file>`), so the
+    (`dist/build_output/<backend>/index.json`, `dist/packages/<file>`), so the
     artifact directories are passed in as well.
     """
     for directory in (source_dir, *extra_dirs):
@@ -122,13 +159,14 @@ def locate_artifact(source_dir, filename, extra_dirs):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Merge pica-pack repo.json files into one index.")
+    parser = argparse.ArgumentParser(description="Merge the per-backend indexes pica-pack writes into one index.")
     parser.add_argument(
         "inputs",
         nargs="*",
         help=(
-            "repo.json files written by pica-pack; none is accepted with"
-            " --download-base to re-stamp an existing index in place"
+            "index files written by pica-pack — a backend index.json, or the"
+            " 0.3.x repo.json; none is accepted with --download-base to"
+            " re-stamp an existing index in place"
         ),
     )
     parser.add_argument("--repo", default=DEFAULT_REPO_JSON, help="merged index to write")
@@ -153,7 +191,7 @@ def main():
         default=[],
         help=(
             "extra directory to look for artifacts in, searched after the"
-            " repo.json's own directory; the publish job stages artifacts and"
+            " index's own directory; the publish job stages artifacts and"
             " index metadata in separate directories"
         ),
     )
@@ -164,7 +202,7 @@ def main():
     args = parser.parse_args()
 
     if not args.inputs and not args.download_base:
-        parser.error("give at least one repo.json, or --download-base to re-stamp the index in place")
+        parser.error("give at least one index file, or --download-base to re-stamp the index in place")
 
     if not os.path.isfile(args.repo):
         print(

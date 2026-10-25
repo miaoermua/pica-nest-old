@@ -301,7 +301,7 @@ class ReleaseListTest(unittest.TestCase):
                 self.assertEqual(pkg["download_url"], f"{BASE}/{pkg['filename']}")
 
     def test_artifacts_may_be_staged_apart_from_the_index_metadata(self):
-        """The publish job restores dist/build_output/<backend>/repo.json and
+        """The publish job restores dist/build_output/<backend>/index.json and
         dist/packages/* separately, so lookup cannot rely on co-location."""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -317,8 +317,9 @@ class ReleaseListTest(unittest.TestCase):
                 "pkgname = demo\npkgver = 1.0.0\npkgrel = 1\nplatform = all\narch = x86_64\npkgmgr = opkg\n",
                 {"pkgs/demo.ipk": b"ipk"},
             )
-            (metadata / "repo.json").write_text(json.dumps({
-                "schema": 2,
+            (metadata / "index.json").write_text(json.dumps({
+                "schema": 1,
+                "mgr": "opkg",
                 "packages": [{
                     "pkgname": "demo", "pkgver": "1.0.0", "pkgrel": "1",
                     "pkgmgr": "opkg", "platform": "all", "arch": "x86_64",
@@ -326,7 +327,7 @@ class ReleaseListTest(unittest.TestCase):
                 }],
             }))
             result = subprocess.run(
-                [sys.executable, str(SCRIPTS / "gen_repo_index.py"), str(metadata / "repo.json"),
+                [sys.executable, str(SCRIPTS / "gen_repo_index.py"), str(metadata / "index.json"),
                  "--repo", str(root / "r/repo.json"), "--download-base", BASE,
                  "--artifacts-dir", str(staged)],
                 cwd=root, capture_output=True, text=True,
@@ -334,6 +335,82 @@ class ReleaseListTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             merged = json.loads((root / "r/repo.json").read_text())["packages"]
             self.assertEqual(merged[0]["download_url"], f"{BASE}/{filename}")
+
+    def test_a_backend_index_is_accepted(self):
+        """0.4.0 writes one index per backend, named `index.json`.
+
+        The envelope differs from the 0.3.x `repo.json` — schema 1 with a `mgr`
+        field naming the backend instead of schema 2 with no such field — but
+        the entries are the same, so the merge has to take either.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "r").mkdir()
+            (root / "r/repo.json").write_text(json.dumps({"schema": 2, "packages": []}))
+            output = root / "build/apk"
+            output.mkdir(parents=True)
+            filename = "demo-1.0.0-1-x86_64-apk.pkg.tar.gz"
+            make_artifact(
+                output / filename,
+                "pkgname = demo\npkgver = 1.0.0\npkgrel = 1\nplatform = all\narch = x86_64\npkgmgr = apk\n",
+                {"pkgs/demo.apk": b"apk"},
+            )
+            (output / "index.json").write_text(json.dumps({
+                "schema": 1,
+                "mgr": "apk",
+                "generated_at": "2026-10-25T00:00:00Z",
+                "packages": [{
+                    "pkgname": "demo", "pkgver": "1.0.0", "pkgrel": "1",
+                    "pkgmgr": "apk", "platform": "all", "arch": "x86_64",
+                    "filename": filename, "sha256": sha256(output / filename),
+                }],
+            }))
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "gen_repo_index.py"), str(output / "index.json"),
+                 "--repo", str(root / "r/repo.json"), "--download-base", BASE],
+                cwd=root, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            merged = json.loads((root / "r/repo.json").read_text())["packages"]
+            self.assertEqual(len(merged), 1)
+            self.assertEqual(merged[0]["pkgmgr"], "apk")
+            self.assertEqual(merged[0]["download_url"], f"{BASE}/{filename}")
+
+    def test_a_backend_index_that_disagrees_with_its_own_entries_is_refused(self):
+        """A file that contradicts itself mislabelled an artifact.
+
+        The client checks the same thing in `parse_backend_index`, so a
+        mismatch here means the build wrote a package into the wrong
+        backend's index.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "r").mkdir()
+            (root / "r/repo.json").write_text(json.dumps({"schema": 2, "packages": []}))
+            output = root / "build/apk"
+            output.mkdir(parents=True)
+            filename = "demo-1.0.0-1-x86_64-apk.pkg.tar.gz"
+            make_artifact(
+                output / filename,
+                "pkgname = demo\npkgver = 1.0.0\npkgrel = 1\nplatform = all\narch = x86_64\npkgmgr = apk\n",
+                {"pkgs/demo.apk": b"apk"},
+            )
+            (output / "index.json").write_text(json.dumps({
+                "schema": 1,
+                "mgr": "opkg",
+                "packages": [{
+                    "pkgname": "demo", "pkgver": "1.0.0", "pkgrel": "1",
+                    "pkgmgr": "apk", "platform": "all", "arch": "x86_64",
+                    "filename": filename, "sha256": sha256(output / filename),
+                }],
+            }))
+            result = subprocess.run(
+                [sys.executable, str(SCRIPTS / "gen_repo_index.py"), str(output / "index.json"),
+                 "--repo", str(root / "r/repo.json"), "--download-base", BASE],
+                cwd=root, capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("declares", result.stderr)
 
     def test_a_missing_artifact_blocks_the_index_update(self):
         """Never publish an entry whose asset was not produced."""
