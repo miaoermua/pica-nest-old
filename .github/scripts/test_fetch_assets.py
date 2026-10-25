@@ -406,7 +406,14 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(len(skipped), 1)
         self.assertIn("aarch64_cortex-a76", skipped[0]["asset"])
 
-    def test_github_noarch_target_is_one_request(self):
+    def test_github_noarch_asset_lands_in_every_matrix_arch(self):
+        """An `all` container is a part of every package, not a package of its own.
+
+        Written once under `all/all` it is built as a second artifact: one
+        holding the interface and no binary, beside one per architecture holding
+        the binary and no interface. Both carry the same name, version and
+        manifest, so an install takes one and is missing half the app.
+        """
         release = {
             "tag_name": "v1",
             "assets": [{"name": "demo_1.0_all.ipk", "browser_download_url": "https://x/all.ipk", "size": 10}],
@@ -421,6 +428,28 @@ class PlanTest(unittest.TestCase):
                 {"platform": "amd64", "arch": "x86_64"},
                 {"platform": "arm64", "arch": "aarch64_generic"},
             ]},
+        }
+        requests, errors, _, _ = plan_github_assets(release, config, "/stage", "demo")
+        self.assertEqual([request["arch"] for request in requests], ["x86_64", "aarch64_generic"])
+        self.assertEqual([request["platform"] for request in requests], ["amd64", "arm64"])
+        for request in requests:
+            self.assertTrue(request["dest"].endswith("demo_1.0_all.ipk"))
+            self.assertNotIn("all/all", request["dest"].replace("\\", "/"))
+        self.assertEqual(errors, [])
+
+    def test_github_noarch_asset_stays_single_for_an_all_matrix(self):
+        """A job whose matrix is `all/all` has one package, so one destination."""
+        release = {
+            "tag_name": "v1",
+            "assets": [{"name": "demo_1.0_all.ipk", "browser_download_url": "https://x/all.ipk", "size": 10}],
+        }
+        config = {
+            "mgr": "opkg",
+            "source": {"release": {"assets": [
+                {"name": "demo", "regex": r"^demo_.*_all\.ipk$",
+                 "target": {"platform": "all", "arch": "all"}}
+            ]}},
+            "build": {"matrix": [{"platform": "all", "arch": "all"}]},
         }
         requests, errors, _, _ = plan_github_assets(release, config, "/stage", "demo")
         self.assertEqual(len(requests), 1)

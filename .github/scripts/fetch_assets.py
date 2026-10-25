@@ -329,25 +329,38 @@ def fetch_github_assets(pkg_dir, build_config):
                 # build.json 的 `mgr`，与 manifest 的 `targets` 必须一致，否则
                 # pica-pack 会以"pkgs/<backend>/ present but <backend> is not
                 # in targets"拒绝构建。
-                backend = build_config.get("mgr", "opkg")
-                dest_dir = os.path.join(pkg_dir, "pkgs", backend, target_platform, target_arch)
-                
-                # If we need to extract from zip, we download to a temporary location first
-                if inner_regex and a["name"].endswith(".zip"):
-                    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip:
-                        zip_tmp_path = tmp_zip.name
+                #
+                # An arch-independent container goes into every matrix row, for
+                # the reason given in `plan_github_assets`: one copy under
+                # `all/all` would be a package of its own instead of a part of
+                # each architecture's package.
+                matrix_arches = [m.get("arch") for m in matrix if m.get("arch")]
+                platform_by_arch = {m.get("arch"): m.get("platform", "all") for m in matrix if m.get("arch")}
+                if target_arch == "all" and matrix_arches and "all" not in matrix_arches:
+                    destinations = [(platform_by_arch[a], a) for a in matrix_arches]
+                else:
+                    destinations = [(target_platform, target_arch)]
 
-                    if download_file(a["browser_download_url"], zip_tmp_path):
-                        extracted = extract_all_from_zip(zip_tmp_path, inner_regex, dest_dir)
-                        if extracted:
+                backend = build_config.get("mgr", "opkg")
+                for dest_platform, dest_arch in destinations:
+                    dest_dir = os.path.join(pkg_dir, "pkgs", backend, dest_platform, dest_arch)
+
+                    # If we need to extract from zip, we download to a temporary location first
+                    if inner_regex and a["name"].endswith(".zip"):
+                        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp_zip:
+                            zip_tmp_path = tmp_zip.name
+
+                        if download_file(a["browser_download_url"], zip_tmp_path):
+                            extracted = extract_all_from_zip(zip_tmp_path, inner_regex, dest_dir)
+                            if extracted:
+                                found_any = True
+                                found_this_asset_meta = True
+                            os.remove(zip_tmp_path)
+                    else:
+                        dest_path = os.path.join(dest_dir, a["name"])
+                        if download_file(a["browser_download_url"], dest_path):
                             found_any = True
                             found_this_asset_meta = True
-                        os.remove(zip_tmp_path)
-                else:
-                    dest_path = os.path.join(dest_dir, a["name"])
-                    if download_file(a["browser_download_url"], dest_path):
-                        found_any = True
-                        found_this_asset_meta = True
         
         if not found_this_asset_meta and required:
             print(f"Required GitHub asset '{asset_regex}' not found.")
@@ -898,28 +911,46 @@ def plan_github_assets(release, build_config, stage, pkg):
 
             platform = platform or "all"
             arch = arch or "all"
-            if inner_regex and asset_name.endswith(".zip"):
-                kind = "zip"
-                # A zip request may yield several IPKs, so its destination is
-                # the architecture's package directory, not one guessed name.
-                dest = os.path.join(stage, "pkgs", mgr, platform, arch)
+
+            # An arch-independent asset belongs inside every package the matrix
+            # produces, not in a package of its own. A container that says `all`
+            # is code every architecture runs: written once to `all/all` it
+            # becomes a second package holding the interface and no binary, next
+            # to one package per architecture holding the binary and no
+            # interface. Both then carry the same name, version and manifest, so
+            # an install picks one of them and is missing half the app.
+            if arch == "all" and matrix_arches and "all" not in matrix_arches:
+                destinations = [
+                    (platform_by_arch[matrix_arch], matrix_arch) for matrix_arch in matrix_arches
+                ]
             else:
-                kind = "container"
-                dest = os.path.join(stage, "pkgs", mgr, platform, arch, asset_name)
+                destinations = [(platform, arch)]
+
             digest = (asset.get("digest") or "").removeprefix("sha256:")
-            requests.append(
-                {
-                    "pkg": pkg, "mgr": mgr, "platform": platform, "arch": arch,
-                    "url": asset.get("browser_download_url", ""), "dest": dest,
-                    "kind": kind, "inner_regex": inner_regex, "asset": asset_name,
-                    "role": asset_meta.get("role") or infer_role(asset_name),
-                    "required": required, "expected_size": asset.get("size"),
-                    "expected_sha256": digest if re.fullmatch(r"[0-9a-f]{64}", digest) else None,
-                }
-            )
+            for dest_platform, dest_arch in destinations:
+                if inner_regex and asset_name.endswith(".zip"):
+                    kind = "zip"
+                    # A zip request may yield several IPKs, so its destination is
+                    # the architecture's package directory, not one guessed name.
+                    dest = os.path.join(stage, "pkgs", mgr, dest_platform, dest_arch)
+                else:
+                    kind = "container"
+                    dest = os.path.join(
+                        stage, "pkgs", mgr, dest_platform, dest_arch, asset_name
+                    )
+                requests.append(
+                    {
+                        "pkg": pkg, "mgr": mgr, "platform": dest_platform, "arch": dest_arch,
+                        "url": asset.get("browser_download_url", ""), "dest": dest,
+                        "kind": kind, "inner_regex": inner_regex, "asset": asset_name,
+                        "role": asset_meta.get("role") or infer_role(asset_name),
+                        "required": required, "expected_size": asset.get("size"),
+                        "expected_sha256": digest if re.fullmatch(r"[0-9a-f]{64}", digest) else None,
+                    }
+                )
+                if dest_arch != "all":
+                    found_arches.add(dest_arch)
             found_any = True
-            if arch != "all":
-                found_arches.add(arch)
 
         if required:
             if "arch" in capture:
