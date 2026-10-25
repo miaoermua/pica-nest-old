@@ -80,9 +80,10 @@ function json(body, status = 200) {
 /**
  * Install a cache and an upstream router for one test. `overrides` maps an
  * exact upstream URL to a function returning that response, so a test can make
- * one endpoint fail without disturbing the others.
+ * one endpoint fail without disturbing the others. `origin` is the origin the
+ * request arrives on, which is what a rewritten `download_url` is built from.
  */
-function setup({ overrides = {}, repo = null, cache = new MemoryCache() } = {}) {
+function setup({ overrides = {}, repo = null, cache = new MemoryCache(), origin = ORIGIN } = {}) {
   const calls = [];
 
   globalThis.caches = { default: cache };
@@ -106,7 +107,8 @@ function setup({ overrides = {}, repo = null, cache = new MemoryCache() } = {}) 
   return {
     cache,
     calls,
-    get: (path, init) => worker.fetch(new Request(ORIGIN + path, init), ENV),
+    origin,
+    get: (path, init) => worker.fetch(new Request(origin + path, init), ENV),
     upstreamCalls: (fragment) => calls.filter((url) => url.includes(fragment)).length,
   };
 }
@@ -114,7 +116,7 @@ function setup({ overrides = {}, repo = null, cache = new MemoryCache() } = {}) 
 test("the descriptor answers on / and both index spellings, cached once", async () => {
   const ctx = setup();
 
-  for (const path of ["/", "/index.json", "/r/index.json"]) {
+  for (const path of ["/", "/r", "/r/", "/index.json", "/r/index.json"]) {
     const response = await ctx.get(path);
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get("access-control-allow-origin"), "*", path);
@@ -325,4 +327,167 @@ test("an unknown route is a 404 with a JSON body", async () => {
   const response = await ctx.get("/nothing/here");
   assert.equal(response.status, 404);
   assert.match((await response.json()).error, /no such route/);
+});
+
+// A dated release, the shape `build-and-release.yml` publishes alongside the
+// rolling `latest`.
+const TAG = "26-10-22-09-35-55";
+// Real filenames from the live index. `@` separates a package from who built it
+// (`ddns-go@immortalwrt`, `rtp2httpd@jarod360`) and `~` appears in an upstream
+// version; both are characters `encodeURIComponent` would turn into `%40` and
+// `%7E`, which the asset route refuses on sight.
+const ASSET_AT = "luci-theme-material3@KawaiiHachimi-26.156.15499~38397ed-1-all-opkg.pkg.tar.gz";
+
+test("a backend index sends clients back to this origin for the artifact", async () => {
+  const ctx = setup();
+
+  for (const path of ["/apk/index.json", "/r/apk/index.json"]) {
+    const body = await (await ctx.get(path)).json();
+    const entry = body.packages[0];
+    assert.equal(entry.download_url, `${ORIGIN}/latest/${ASSET}`, path);
+    // The address is the only thing that changes: a client verifies these bytes
+    // against this hash, so both have to survive untouched.
+    assert.equal(entry.sha256, SHA, path);
+    assert.equal(entry.filename, ASSET, path);
+    assert.equal(entry.pkgver, "1.0", path);
+  }
+
+  assert.equal(
+    APK_INDEX.packages[0].download_url,
+    `${RELEASES}latest/${ASSET}`,
+    "the upstream body is not rewritten in place, or the next request would rewrite it twice",
+  );
+});
+
+test("repo.json is rewritten in both spellings", async () => {
+  const ctx = setup();
+
+  for (const path of ["/repo.json", "/r/repo.json"]) {
+    const body = await (await ctx.get(path)).json();
+    assert.equal(body.packages[0].download_url, `${ORIGIN}/latest/${ASSET}`, path);
+    assert.equal(body.schema, 2, path);
+  }
+});
+
+test("the descriptor is served as published", async () => {
+  const ctx = setup();
+
+  const body = await (await ctx.get("/index.json")).json();
+  assert.deepEqual(body, DESCRIPTOR, "the descriptor names indexes, not packages");
+  assert.equal(body.packages, undefined);
+});
+
+test("a rewritten address is not rewritten again", async () => {
+  const ctx = setup();
+
+  const first = await (await ctx.get("/apk/index.json")).json();
+  // The second request is served from the 60s index cache, so it exercises the
+  // other half of the claim: the cache holds the published index, not the
+  // rewritten one.
+  const second = await (await ctx.get("/apk/index.json")).json();
+
+  assert.equal(first.packages[0].download_url, `${ORIGIN}/latest/${ASSET}`);
+  assert.equal(second.packages[0].download_url, first.packages[0].download_url);
+  assert.ok(!second.packages[0].download_url.includes("/latest/latest/"));
+  assert.equal(ctx.upstreamCalls("apk/index.json"), 1);
+});
+
+test("the rewritten address belongs to the origin that was asked", async () => {
+  const production = setup({ origin: "https://pica-nest.miaoer.net" });
+
+  const body = await (await production.get("/apk/index.json")).json();
+  assert.equal(body.packages[0].download_url, `https://pica-nest.miaoer.net/latest/${ASSET}`);
+});
+
+test("an artifact published under a dated release keeps its tag", async () => {
+  const ctx = setup({ repo: repoIndex({ download_url: `${RELEASES}${TAG}/${ASSET}` }) });
+
+  const body = await (await ctx.get("/repo.json")).json();
+  assert.equal(body.packages[0].download_url, `${ORIGIN}/releases/${TAG}/${ASSET}`);
+
+  // And the address it was given actually serves the artifact.
+  const response = await ctx.get(`/releases/${TAG}/${ASSET}`);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "artifact-bytes");
+});
+
+test("the proxy still resolves its upstream from the index as published", async () => {
+  const ctx = setup({ repo: repoIndex({ download_url: `${RELEASES}${TAG}/${ASSET}` }) });
+
+  await ctx.get("/repo.json");
+  const response = await ctx.get(`/releases/${TAG}/${ASSET}`);
+  assert.equal(response.status, 200);
+
+  // `serveAsset` reads the cached index to choose its upstream. Were the cached
+  // copy the rewritten one, the tagged address would no longer be a github.com
+  // URL and the artifact would silently be fetched from the rolling release
+  // instead — different bytes, under the hash recorded for these.
+  assert.equal(ctx.upstreamCalls(`${RELEASES}${TAG}/${ASSET}`), 1);
+  assert.equal(ctx.upstreamCalls(`${RELEASES}latest/`), 0);
+});
+
+test("a filename the proxy route would refuse is left as published", async () => {
+  const ctx = setup({
+    repo: repoIndex({ filename: "notes.txt", download_url: `${RELEASES}latest/notes.txt` }),
+  });
+
+  const body = await (await ctx.get("/repo.json")).json();
+  assert.equal(
+    body.packages[0].download_url,
+    `${RELEASES}latest/notes.txt`,
+    "rewriting it would turn a working address into a 404",
+  );
+});
+
+test("a filename carrying @ or ~ is rewritten without percent-encoding", async () => {
+  const ctx = setup({
+    repo: repoIndex({ filename: ASSET_AT, download_url: `${RELEASES}latest/${ASSET_AT}` }),
+  });
+
+  const body = await (await ctx.get("/repo.json")).json();
+  const url = body.packages[0].download_url;
+  assert.equal(url, `${ORIGIN}/latest/${ASSET_AT}`);
+  assert.ok(!url.includes("%"), `an encoded name would be refused by the asset route: ${url}`);
+
+  const response = await ctx.get(`/latest/${ASSET_AT}`);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "artifact-bytes");
+});
+
+test("an address this worker does not own is left as published", async () => {
+  const cases = {
+    "another host": "https://evil.example/collect",
+    "another repository's release": `https://github.com/someone/else/releases/latest/${ASSET}`,
+    "a LAN mirror": `http://192.168.1.10/repo/${ASSET}`,
+  };
+
+  for (const [name, download_url] of Object.entries(cases)) {
+    const ctx = setup({ repo: repoIndex({ download_url }) });
+    const body = await (await ctx.get("/repo.json")).json();
+    assert.equal(body.packages[0].download_url, download_url, name);
+  }
+});
+
+test("an entry with no address is not given one", async () => {
+  const ctx = setup({ repo: repoIndex({ download_url: undefined }) });
+
+  const body = await (await ctx.get("/repo.json")).json();
+  assert.equal(
+    "download_url" in body.packages[0],
+    false,
+    "inventing an address would hide an index that published none",
+  );
+});
+
+test("an entry whose filename disagrees with its address is left as published", async () => {
+  const ctx = setup({
+    repo: repoIndex({ download_url: `${RELEASES}latest/something-else.pkg.tar.gz` }),
+  });
+
+  const body = await (await ctx.get("/repo.json")).json();
+  assert.equal(
+    body.packages[0].download_url,
+    `${RELEASES}latest/something-else.pkg.tar.gz`,
+    "the sha256 beside the entry describes the published file, not the rewritten one",
+  );
 });

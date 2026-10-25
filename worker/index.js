@@ -15,15 +15,20 @@
  *
  *   /                          entry descriptor (same as /index.json)
  *   /index.json, /r/index.json entry descriptor
- *   /repo.json, /r/repo.json   schema 2 index — what Pica clients fetch today
+ *   /repo.json, /r/repo.json   schema 2 index
  *   /<mgr>/index.json          a backend index, if the descriptor declares it
  *   /r/<mgr>/index.json        the same, addressed under the r/ prefix
  *   /latest/<file>             artifact from the rolling release
  *   /releases/<tag>/<file>     artifact from a named release
  *
- * The last two exist for clients that resolve download URLs themselves. They
- * are also why the cache key carries the artifact's SHA-256: a filename can be
- * republished with new bytes, a hash cannot.
+ * A client reads the descriptor, then the backend index it needs, then downloads
+ * whatever `download_url` that index carries — which upstream is a GitHub
+ * release address, unreachable from networks this proxy exists for. So the
+ * indexes are served with every artifact this worker can proxy re-addressed
+ * through the last two routes (`withProxiedDownloads`); the files in Git keep
+ * the upstream address. The asset routes are also why the cache key carries the
+ * artifact's SHA-256: a filename can be republished with new bytes, a hash
+ * cannot.
  */
 
 const JSON_TTL = 60;
@@ -93,6 +98,83 @@ function trustedReleaseUrl(candidate, env) {
   if (parsed.protocol !== "https:" || parsed.hostname !== "github.com") return null;
   if (!parsed.pathname.startsWith(`/${env.GITHUB_USER}/${env.GITHUB_REPO}/releases/`)) return null;
   return parsed.toString();
+}
+
+/**
+ * The tag and asset name a trusted release URL points at, or null.
+ *
+ * The tag is kept because it decides the route: an artifact published under a
+ * dated release lives at `/releases/<tag>/<file>`, and addressing it as
+ * `/latest/<file>` would serve whichever bytes the rolling release happens to
+ * hold — different bytes, with the sha256 of the ones the index recorded.
+ */
+function releaseTarget(candidate, env) {
+  const trusted = trustedReleaseUrl(candidate, env);
+  if (trusted === null) return null;
+
+  const prefix = `/${env.GITHUB_USER}/${env.GITHUB_REPO}/releases/download/`;
+  const rest = new URL(trusted).pathname.slice(prefix.length);
+  const slash = rest.indexOf("/");
+  if (slash <= 0 || slash === rest.length - 1) return null;
+  return { tag: rest.slice(0, slash), name: rest.slice(slash + 1) };
+}
+
+/**
+ * The address this worker serves `entry`'s artifact at, or null when the entry
+ * should keep the address its index published.
+ *
+ * Rewritten only when each step checks out: the URL is a release of *this*
+ * repository, its last segment is exactly the entry's `filename` — so the
+ * `sha256` recorded beside it still describes these bytes — and the resulting
+ * path is one `assetTarget` routes. That last check reuses the route's own
+ * validation instead of restating it, so a rewritten address cannot 404 where
+ * the original worked.
+ *
+ * Everything else is left as the source published it: a LAN mirror, another
+ * repository's release, a name the proxy would refuse, or an entry with no
+ * `download_url` at all. An address this worker cannot vouch for is not one it
+ * should replace, and inventing one would hide a broken index behind a working
+ * download.
+ */
+function proxiedDownloadUrl(entry, env, origin) {
+  if (!entry || typeof entry !== "object") return null;
+
+  const target = releaseTarget(entry.download_url, env);
+  if (target === null || target.name !== entry.filename) return null;
+
+  const path =
+    target.tag === "latest"
+      ? `/latest/${target.name}`
+      : `/releases/${target.tag}/${target.name}`;
+  if (assetTarget(path) === null) return null;
+  return `${origin}${path}`;
+}
+
+/**
+ * An index as the clients of *this* origin should read it: every artifact this
+ * worker can proxy is addressed through it, so a client that can reach the
+ * index can reach the packages it names.
+ *
+ * Applied on the way out and never to what `readJson` caches. `serveAsset` reads
+ * the cached index to choose its upstream (`releaseUrl` prefers the declared
+ * URL), and a rewritten address is not a `github.com` one, so caching it would
+ * quietly drop every artifact back to a filename-derived `latest/` — including
+ * the ones a dated release published elsewhere.
+ *
+ * Only `download_url` changes, only on qualifying entries, and a body with
+ * nothing to rewrite is returned untouched.
+ */
+function withProxiedDownloads(body, env, origin) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.packages)) return body;
+
+  let changed = false;
+  const packages = body.packages.map((entry) => {
+    const url = proxiedDownloadUrl(entry, env, origin);
+    if (url === null || (entry && entry.download_url) === url) return entry;
+    changed = true;
+    return { ...entry, download_url: url };
+  });
+  return changed ? { ...body, packages } : body;
 }
 
 async function readJson(env, cache, origin, relative) {
@@ -267,16 +349,28 @@ export default {
 
     try {
       // The unified entry. `/` answers it too: a base URL with or without a
-      // trailing slash should both be usable as the source root.
-      if (path === "/" || path === "/index.json" || path === "/r/index.json") {
+      // trailing slash should both be usable as the source root. `/r` and `/r/`
+      // are the directory the indexes live in, so asking for it answers the
+      // descriptor rather than 404 — that is what a root is.
+      if (
+        path === "/" ||
+        path === "/r" ||
+        path === "/r/" ||
+        path === "/index.json" ||
+        path === "/r/index.json"
+      ) {
         const descriptor = await readJson(env, cache, url.origin, "index.json");
         return jsonResponse(descriptor, 200, { "cache-control": `public, max-age=${JSON_TTL}` });
       }
 
-      // Schema 2, unchanged: existing clients fetch exactly this and nothing else.
+      // Schema 2. Clients today read the descriptor and a backend index instead,
+      // but this is the same artifact list, and it has to agree with them about
+      // where a package is downloaded from.
       if (path === "/repo.json" || path === "/r/repo.json") {
         const index = await readJson(env, cache, url.origin, REPO_FILE);
-        return jsonResponse(index, 200, { "cache-control": `public, max-age=${JSON_TTL}` });
+        return jsonResponse(withProxiedDownloads(index, env, url.origin), 200, {
+          "cache-control": `public, max-age=${JSON_TTL}`,
+        });
       }
 
       const relative = backendPath(path);
@@ -289,7 +383,13 @@ export default {
           return errorResponse(`no such index: ${relative}`, 404);
         }
         const index = await readJson(env, cache, url.origin, relative);
-        return jsonResponse(index, 200, { "cache-control": `public, max-age=${JSON_TTL}` });
+        // The packages a client installs from this source are addressed back to
+        // it: the descriptor it just read, this index, and the artifacts all
+        // share one origin, which is the only reason a proxied source works on a
+        // network that cannot reach GitHub.
+        return jsonResponse(withProxiedDownloads(index, env, url.origin), 200, {
+          "cache-control": `public, max-age=${JSON_TTL}`,
+        });
       }
 
       const target = assetTarget(path);

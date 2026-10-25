@@ -30,6 +30,9 @@ __pycache__/
 # Schema cache
 .schema-cache/
 
+# Local mirror cache, written by scripts/serve_mirror.py
+.mirror-cache/
+
 .codebuddy/*
 .workbuddy/*
 
