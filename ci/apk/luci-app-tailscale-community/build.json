@@ -7,15 +7,17 @@
   "source": {
     "provider": "http_template",
     "url_templates": [
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-tailscale-community-26.162.29621~507ab5e.apk",
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/packages/tailscale-1.102.2-r1.apk",
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/base/ip-full-6.18.0-r2.apk"
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-app-tailscale-community-26.288.56989~75a306d.apk",
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-i18n-tailscale-community-zh-cn-26.288.56989~75a306d.apk",
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-i18n-tailscale-community-zh-tw-26.288.56989~75a306d.apk",
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/packages/tailscale-1.104.1-r1.apk",
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/base/ip-full-6.18.0-r2.apk"
     ]
   },
   "versioning": {
     "pkgver": {
       "from": "manifest",
-      "fallback": "1.102.2"
+      "fallback": "1.104.1"
     },
     "pkgrel": {
       "from": "manifest",

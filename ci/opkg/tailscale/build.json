@@ -6,7 +6,7 @@
   "manifest": "src/opkg/tailscale/manifest",
   "source": {
     "provider": "http_template",
-    "url_template": "https://downloads.immortalwrt.org/releases/24.10.0/packages/{arch}/packages/tailscale_1.80.3-r1_{arch}.ipk",
+    "url_template": "https://downloads.openwrt.org/releases/24.10.8/packages/{arch}/packages/tailscale_1.80.3-r1_{arch}.ipk",
     "version": "1.80.3-r1"
   },
   "versioning": {

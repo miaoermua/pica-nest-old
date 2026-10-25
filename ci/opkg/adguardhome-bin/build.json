@@ -6,7 +6,7 @@
   "manifest": "src/opkg/adguardhome-bin/manifest",
   "source": {
     "provider": "http_template",
-    "url_template": "https://downloads.immortalwrt.org/releases/24.10.0/packages/{arch}/packages/adguardhome_0.107.57-r1_{arch}.ipk",
+    "url_template": "https://downloads.openwrt.org/releases/24.10.8/packages/{arch}/packages/adguardhome_0.107.57-r1_{arch}.ipk",
     "version": "0.107.57-r1"
   },
   "versioning": {

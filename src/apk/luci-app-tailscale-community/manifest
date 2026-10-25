@@ -1,6 +1,6 @@
 pkgname = luci-app-tailscale-community
 appname = tailscale
-pkgver = 1.102.2
+pkgver = 1.104.1
 pkgrel = 1
 os = openwrt
 platform = all
@@ -27,7 +27,13 @@ targets = apk
 #
 # Each stays a separate container so apk still records what it installed and
 # any one of them can be updated on its own.
+#
+# The two translations are carried as well: the interface is translated, and a
+# package that ships the app but not its catalogue opens in English on a device
+# whose locale is not. Only the Chinese ones — the languages this source's
+# users read — and the template says how the rest would be named.
 app = luci-app-tailscale-community
 app = tailscale
 app = ip-full
+app_i18n = luci-i18n-tailscale-community-{lang}
 base = luci-base
