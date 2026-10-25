@@ -1,0 +1,43 @@
+pkgname = luci-app-homeproxy
+appname = homeproxy
+pkgver = 26.223.24114~fe87581
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = LuCI interface for homeproxy, a sing-box based proxy client with a per-device routing table.
+url = https://github.com/immortalwrt/homeproxy
+luci_url = https://github.com/immortalwrt/homeproxy
+branch = master
+protocol = luci
+luci_desc = LuCI support for homeproxy
+license = GPL-3.0
+visibility = open
+packager = pica-pack
+type = luci
+luci = js2
+targets = apk
+
+# `homeproxy` is the name a person types; the container the feed builds is
+# `luci-app-homeproxy`, and that stays in `app` so uninstall removes what was
+# installed.
+#
+# The container comes from snapshots rather than the 25.12.2 release: that is
+# where the interface is published for this branch, and the version is written
+# into the URL because a snapshot directory simply holds whatever was built
+# last — this one names 26.223.24114~fe87581, and a later rebuild of the same
+# package leaves the file behind under a different name.
+app = luci-app-homeproxy
+app_i18n = luci-i18n-homeproxy-{lang}
+
+# Unlike PassWall, this interface has exactly one backend, so its runtime is a
+# requirement rather than one alternative among several: without sing-box the
+# interface opens onto a page that cannot route anything. It is declared here
+# because it is the one dependency whose absence makes the package useless.
+base = luci-base
+base = sing-box
+
+# The nftables module the transparent-proxy rules are built on. A kernel
+# module, so it travels with the image rather than being carried.
+kmod = kmod-nft-tproxy

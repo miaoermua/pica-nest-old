@@ -1,0 +1,60 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "luci-app-passwall",
+  "enabled": true,
+  "manifest": "src/apk/luci-app-passwall/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-passwall-26.9.1-r1.apk",
+      "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-i18n-passwall-zh-cn-26.246.30323~9baefa5.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "26.9.1"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      },
+      {
+        "platform": "mipsel",
+        "arch": "mipsel_24kc"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

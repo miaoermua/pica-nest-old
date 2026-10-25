@@ -1,0 +1,56 @@
+pkgname = luci-app-passwall
+appname = passwall
+pkgver = 25.12.16
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = LuCI interface for PassWall, a proxy client supporting Xray, sing-box, Shadowsocks and the transports built on them.
+url = https://github.com/Openwrt-Passwall/openwrt-passwall
+luci_url = https://github.com/Openwrt-Passwall/openwrt-passwall
+branch = master
+protocol = luci
+luci_desc = LuCI support for PassWall
+license = GPL-3.0
+visibility = open
+packager = pica-pack
+type = luci
+luci = lua1
+targets = opkg
+
+# `passwall` is the name a person types; the container the feed builds is
+# `luci-app-passwall`, and that is what stays in `app` so uninstall removes
+# what was installed.
+app = luci-app-passwall
+app_i18n = luci-i18n-passwall-{lang}
+
+# luci-base is the web framework. The container does not list it.
+#
+# Everything below is an optional component, marked with the trailing `?` that
+# tells pica's precheck to warn rather than refuse: PassWall is a framework,
+# and which protocols a device runs is the user's choice. The container
+# declares all of them as hard dependencies because the feed had them enabled
+# at build time, so a device missing one still fails at the backend — but the
+# precheck now says which ones are missing before anything is downloaded,
+# instead of a bare dependency error afterwards.
+base = luci-base
+
+# Protocol implementations, each an alternative to the others.
+base = xray-core?
+base = sing-box?
+base = shadowsocks-rust-sslocal?
+base = shadowsocks-rust-ssserver?
+base = simple-obfs-client?
+base = v2ray-plugin?
+
+# DNS and transparent-forwarding helpers, used by the modes that select them.
+base = chinadns-ng?
+base = dns2socks?
+base = microsocks?
+base = ipt2socks?
+base = haproxy?
+
+# Diagnostics the interface offers, not required to route traffic.
+base = tcping?
+base = geoview?
