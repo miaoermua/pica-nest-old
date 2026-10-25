@@ -6,7 +6,7 @@
   "manifest": "src/opkg/btop/manifest",
   "source": {
     "provider": "http_template",
-    "url_template": "https://downloads.immortalwrt.org/releases/24.10.0/packages/{arch}/packages/btop_1.4.5-r2_{arch}.ipk",
+    "url_template": "https://downloads.openwrt.org/releases/24.10.8/packages/{arch}/packages/btop_1.4.5-r2_{arch}.ipk",
     "version": "1.4.5-r1"
   },
   "versioning": {
