@@ -1,0 +1,46 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "istore",
+  "enabled": true,
+  "manifest": "src/apk/istore/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://istore.istoreos.com/repo-apk/all/store/luci-app-store-0.2.1-r1.apk",
+      "https://istore.istoreos.com/repo-apk/all/store/luci-lib-taskd-1.0.26.apk",
+      "https://istore.istoreos.com/repo-apk/all/store/luci-lib-xterm-4.18.0.apk",
+      "https://istore.istoreos.com/repo-apk/all/store/taskd-1.0.3-r2.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "0.2.1"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "all",
+        "arch": "all"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

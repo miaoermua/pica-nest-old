@@ -1,0 +1,45 @@
+pkgname = istore
+appname = istore
+pkgver = 0.2.1
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = iStore, a package store for OpenWrt's LuCI web interface.
+url = https://github.com/istoreos/istore
+luci_url = https://github.com/istoreos/istore
+branch = main
+protocol = luci
+luci_desc = iStore package store for LuCI
+license = MIT
+visibility = open
+packager = pica-pack
+type = luci
+luci = lua1
+targets = apk
+
+# Wrapped from iStore's own apk store feed, the same place is-opkg updates from.
+# Four containers are carried together because the app's control depends on the
+# two libraries and taskd, and pica does not resolve one Pica package as another
+# package's dependency: a separate lib package would not be installed by
+# `pica -S istore`. This is the .run's install list, without the Lua runtime it
+# adds only when cbi.lua is missing — that is the `base` line below.
+app = luci-app-store
+app = luci-lib-taskd
+app = luci-lib-xterm
+app = taskd
+
+# curl, tar, libuci-lua and mount-utils are in the containers' own control, so
+# they resolve from the device's feed on install.
+#
+# The Lua runtime this interface is written against — `luci.model.uci`,
+# `luci.i18n`, `luci.jsonc` — is declared by the containers themselves: the
+# three LuCI ones all depend on luci-lua-runtime, which is what the JavaScript
+# LuCI of 24.10 and later needs to run a Lua controller at all. Nothing to add.
+#
+# No base line on purpose. The `ask` policy counts the *required* names against
+# the feeds and switches to them when any is found; any required base name is in
+# every feed, so declaring one would send the install there, where
+# luci-app-store does not exist, and the containers would never be used.
+# The `luci` field above is inventory, not something pica installs from.

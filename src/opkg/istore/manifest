@@ -1,0 +1,52 @@
+pkgname = istore
+appname = istore
+pkgver = 0.2.1
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = iStore, a package store for OpenWrt's LuCI web interface.
+url = https://github.com/istoreos/istore
+luci_url = https://github.com/istoreos/istore
+branch = main
+protocol = luci
+luci_desc = iStore package store for LuCI
+license = MIT
+visibility = open
+packager = pica-pack
+type = luci
+luci = lua1
+targets = opkg
+
+# Wrapped from iStore's own store feed, the same place is-opkg updates from.
+# Four containers are carried together because the app's control depends on the
+# two libraries and taskd, and pica does not resolve one Pica package as another
+# package's dependency: a separate lib package would not be installed by
+# `pica -S istore`. This is the .run's install list, without the Lua runtime it
+# adds only when cbi.lua is missing — that is the `base` line below.
+app = luci-app-store
+app = luci-lib-taskd
+app = luci-lib-xterm
+app = taskd
+
+# curl, tar, libuci-lua and mount-utils are in the containers' own control, so
+# they resolve from the device's feed on install.
+#
+# What the containers do not ask for is the Lua runtime this interface is
+# written against. `store.lua` requires `luci.model.uci`, `luci.i18n` and
+# `luci.jsonc`; on the JavaScript LuCI of 24.10 and later luci-base carries none
+# of them — all 106 of its files are JS and ucode — and luci-lua-runtime is what
+# provides them. A Lua-LuCI device already has it; a stock one does not, and the
+# menu entry would be there and answer nothing.
+#
+# Optional — the trailing `?` — and not required, because of the policy below:
+# the `ask` policy counts the *required* names against the feeds and switches to
+# them when any is found, and luci-lua-runtime is in every feed. Required, it
+# would send the install to the feeds, where luci-app-store does not exist, and
+# the containers would never be used. Optional keeps the containers and still
+# names the package, so a device missing it is told which one is missing.
+#
+# No luci-base line for the same reason: luci-lua-runtime depends on it, and the
+# `luci` field above is inventory, not something pica installs from.
+base = luci-lua-runtime?

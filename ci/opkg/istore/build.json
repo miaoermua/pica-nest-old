@@ -1,0 +1,46 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "opkg",
+  "id": "istore",
+  "enabled": true,
+  "manifest": "src/opkg/istore/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://istore.istoreos.com/repo/all/store/luci-app-store_0.2.1-r1_all.ipk",
+      "https://istore.istoreos.com/repo/all/store/luci-lib-taskd_1.0.26_all.ipk",
+      "https://istore.istoreos.com/repo/all/store/luci-lib-xterm_4.18.0_all.ipk",
+      "https://istore.istoreos.com/repo/all/store/taskd_1.0.3-2_all.ipk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "0.2.1"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "all",
+        "arch": "all"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}
