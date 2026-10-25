@@ -1,0 +1,30 @@
+pkgname = ttyd
+appname = ttyd
+pkgver = 1.7.7
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = A command-line tool for sharing terminal over the web.
+url = https://github.com/tsl0922/ttyd
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# The upstream package is the one installed; this source adds nothing to it.
+app = ttyd
+
+# The libraries it links against, declared so a device that lacks one is told
+# which package is missing rather than getting a binary that will not start.
+# libc is left out: it is in every image.
+base = libcap
+base = libopenssl3
+base = libjson-c5
+base = libuv1
+base = zlib
+base = libwebsockets-full

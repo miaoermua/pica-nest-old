@@ -1,0 +1,42 @@
+pkgname = luci-app-syncdial@immortalwrt
+appname = luci-app-syncdial
+pkgver = 2.0
+pkgrel = 25
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = Virtual WAN config generator
+url = https://github.com/immortalwrt/luci/tree/master/applications/luci-app-syncdial
+luci_url = https://github.com/immortalwrt/luci/tree/master/applications/luci-app-syncdial
+branch = master
+protocol = luci
+luci_desc = Virtual WAN config generator
+license = Apache-2.0
+visibility = open
+packager = pica-pack
+type = luci
+luci = lua1
+targets = opkg
+
+# The upstream name is what gets installed; this source's own name carries the
+# feed it came from, so the package and the one the device's own source
+# publishes do not collide in one index.
+app = luci-app-syncdial
+
+# The recipe asks for `+luci-compat +kmod-macvlan +luci-app-mwan3`, and all
+# three are declared rather than carried:
+#
+#   luci-compat      the Lua compatibility layer this interface's luasrc needs.
+#   luci-app-mwan3   the multi-WAN manager it draws its WAN list from. It is
+#                    a separate LuCI application, not part of this one.
+#   kmod-macvlan     a kernel module. It is built against a kernel version, so
+#                    a copy pinned to one would be wrong on every other
+#                    firmware; it travels with the image.
+#
+# luci-base is the web framework the interface is served by, and is what every
+# LuCI package here declares.
+base = luci-base
+base = luci-compat
+base = luci-app-mwan3
+kmod = kmod-macvlan
