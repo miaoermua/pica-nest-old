@@ -24,19 +24,14 @@ targets = apk
 # publishes do not collide in one index.
 app = luci-app-syncdial
 
-# The recipe asks for `+luci-compat +kmod-macvlan +luci-app-mwan3`, and all
-# three are declared rather than carried:
+# The recipe asks for `+luci-compat +kmod-macvlan +luci-app-mwan3`, and the
+# container's own metadata carries them: the ipk depends on luci-lua-runtime,
+# kmod-macvlan and luci-app-mwan3, and the apk adds luci-compat. They are
+# left to the backend to resolve rather than repeated here, because a name
+# this release spells differently would fail the precheck before opkg ever
+# saw the container — luci-compat is already one such name, renamed to
+# luci-lua-runtime on one side and kept on the other.
 #
-#   luci-compat      the Lua compatibility layer this interface's luasrc needs.
-#   luci-app-mwan3   the multi-WAN manager it draws its WAN list from. It is
-#                    a separate LuCI application, not part of this one.
-#   kmod-macvlan     a kernel module. It is built against a kernel version, so
-#                    a copy pinned to one would be wrong on every other
-#                    firmware; it travels with the image.
-#
-# luci-base is the web framework the interface is served by, and is what every
-# LuCI package here declares.
+# luci-base is the web framework the interface is served by. The container
+# does not list it, and it is what every LuCI package here declares.
 base = luci-base
-base = luci-compat
-base = luci-app-mwan3
-kmod = kmod-macvlan

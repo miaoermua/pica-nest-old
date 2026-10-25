@@ -1,0 +1,55 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "python",
+  "enabled": true,
+  "manifest": "src/apk/python/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/packages/python3-3.13.15-r1.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "3.13.15"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

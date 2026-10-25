@@ -1,0 +1,25 @@
+pkgname = python3-pip
+appname = python3-pip
+pkgver = 23.3.1
+pkgrel = 2
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = The package installer for Python.
+url = https://pip.pypa.io/
+branch = master
+protocol = cli
+license = MIT
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# Wrapped, not self-packed: the container is the feed's own python3-pip apk.
+# The runtime is the feed's python3 package, the way the recipe splits python3
+# from python3-pip (`DEPENDS:=+python3`). The container repeats that dependency,
+# but declaring it here lets pica check the interpreter before apk is called
+# with a container whose dependency it cannot resolve.
+app = python3-pip
+base = python3

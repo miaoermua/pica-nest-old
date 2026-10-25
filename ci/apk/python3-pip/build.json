@@ -1,0 +1,55 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "python3-pip",
+  "enabled": true,
+  "manifest": "src/apk/python3-pip/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/packages/python3-pip-23.3.1-r2.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "23.3.1"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 2
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

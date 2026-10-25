@@ -1,0 +1,31 @@
+pkgname = luci-theme-footstrap
+appname = luci-theme-footstrap
+pkgver = 0.14.16
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = A modern, fast theme for the LuCI web interface.
+url = https://github.com/VizzleTF/luci-theme-footstrap
+luci_url = https://github.com/VizzleTF/luci-theme-footstrap
+branch = main
+protocol = luci
+luci_desc = Footstrap theme for LuCI
+license = Apache-2.0
+visibility = open
+packager = pica-pack
+type = luci
+luci = js2
+targets = opkg
+
+# Wrapped, not self-packed: the container is the theme's own owfeed ipk, the
+# feed the project's installer adds. It is noarch, but owfeed publishes it under
+# every architecture's directory, so the job keeps one matrix entry per device
+# architecture rather than pretending the feed has an architecture-neutral path.
+
+# The views under htdocs/luci-static/resources are written against LuCI's JS2
+# API, which is what `luci = js2` says. luci-base is the only dependency the
+# theme declares, and it is not carried here: it is the feed's package.
+app = luci-theme-footstrap
+base = luci-base

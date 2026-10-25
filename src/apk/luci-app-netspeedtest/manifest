@@ -1,0 +1,30 @@
+pkgname = luci-app-netspeedtest
+appname = netspeedtest
+pkgver = 26.213.33521~1114731
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = LuCI interface for network speed tests with iperf3, LibreSpeed and speedtest.
+url = https://github.com/muink/luci-app-netspeedtest
+luci_url = https://github.com/muink/luci-app-netspeedtest
+branch = master
+protocol = luci
+luci_desc = LuCI app for network speed tests
+license = MIT
+visibility = open
+packager = pica-pack
+type = luci
+luci = js2
+targets = apk
+
+# Wrapped, not self-packed: the container is fantastic-packages' own apk from
+# their 25.12 luci feed, the site the project's README sends users to.
+
+# iperf3, librespeed-go, ca-certificates and curl are the interface's own
+# Depends, left to the device's feed; luci-base is declared because the control
+# does not list it.
+app = luci-app-netspeedtest
+app_i18n = luci-i18n-netspeedtest-{lang}
+base = luci-base

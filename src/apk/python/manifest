@@ -1,0 +1,31 @@
+pkgname = python
+appname = python
+pkgver = 3.13.15
+pkgrel = 1
+os = openwrt
+platform = all
+arch = all
+pica = 0.3.34
+pkgdesc = Python is an interpreted, interactive, object-oriented programming language.
+url = https://www.python.org/
+branch = master
+protocol = cli
+license = Python-2.0.1
+visibility = open
+packager = pica-pack
+type = cli
+targets = apk
+
+# Wrapped, not self-packed: the container is the feed's own python3 apk, so the
+# interpreter and the standard library land on the device byte for byte as
+# OpenWrt builds them. The feed calls that package python3, and the plain
+# `python` name the user asked for lives in pkgname/appname, which is what pica
+# selects on. The native name stays in the install list as `app`, so uninstall
+# removes what was installed.
+
+# python3 is a metapackage: its Depends pull python3-light, the stdlib module
+# packages and the _ssl engine from the device's own feed. Those are left to
+# the container's metadata rather than repeated here — they are the feed's
+# business, and a name this release spells differently would fail the precheck
+# before apk ever saw the container.
+app = python3

@@ -1,0 +1,60 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "luci-app-fchomo",
+  "enabled": true,
+  "manifest": "src/apk/luci-app-fchomo/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://fantastic-packages.github.io/releases/25.12/packages/{arch}/luci/luci-app-fchomo-26.293.27517~bbb4036.apk",
+      "https://fantastic-packages.github.io/releases/25.12/packages/{arch}/luci/luci-i18n-fchomo-zh-cn-26.293.27517~bbb4036.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "26.293.27517~bbb4036"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      },
+      {
+        "platform": "mipsel",
+        "arch": "mipsel_24kc"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

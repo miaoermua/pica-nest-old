@@ -1,0 +1,60 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "opkg",
+  "id": "luci-app-fchomo",
+  "enabled": true,
+  "manifest": "src/opkg/luci-app-fchomo/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://raw.githubusercontent.com/fantastic-packages/releases/archive/24.10/packages/{arch}/luci/luci-app-fchomo_26.231.43104~462b24b_all.ipk",
+      "https://raw.githubusercontent.com/fantastic-packages/releases/archive/24.10/packages/{arch}/luci/luci-i18n-fchomo-zh-cn_26.231.43104~462b24b_all.ipk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "26.231.43104~462b24b"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      },
+      {
+        "platform": "mipsel",
+        "arch": "mipsel_24kc"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}

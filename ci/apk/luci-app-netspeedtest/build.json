@@ -1,0 +1,60 @@
+{
+  "schema": "pica-ci-job-v1",
+  "mgr": "apk",
+  "id": "luci-app-netspeedtest",
+  "enabled": true,
+  "manifest": "src/apk/luci-app-netspeedtest/manifest",
+  "source": {
+    "provider": "http_template",
+    "url_templates": [
+      "https://fantastic-packages.github.io/releases/25.12/packages/{arch}/luci/luci-app-netspeedtest-26.213.33521~1114731.apk",
+      "https://fantastic-packages.github.io/releases/25.12/packages/{arch}/luci/luci-i18n-netspeedtest-zh-cn-26.213.33521~1114731.apk"
+    ]
+  },
+  "versioning": {
+    "pkgver": {
+      "from": "manifest",
+      "fallback": "26.213.33521~1114731"
+    },
+    "pkgrel": {
+      "from": "manifest",
+      "fallback": 1
+    }
+  },
+  "build": {
+    "matrix": [
+      {
+        "platform": "amd64",
+        "arch": "x86_64"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_generic"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a53"
+      },
+      {
+        "platform": "arm64",
+        "arch": "aarch64_cortex-a72"
+      },
+      {
+        "platform": "mipsel",
+        "arch": "mipsel_24kc"
+      }
+    ],
+    "include_dirs": [
+      "scripts",
+      "root",
+      "pkgs"
+    ],
+    "pack": {
+      "tool": "pica-pack",
+      "format": "pkg.tar.gz"
+    }
+  },
+  "publish": {
+    "keep_release_history": 1
+  }
+}
