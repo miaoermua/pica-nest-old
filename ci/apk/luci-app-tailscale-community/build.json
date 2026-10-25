@@ -9,7 +9,6 @@
     "url_templates": [
       "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-app-tailscale-community-26.288.56989~75a306d.apk",
       "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-i18n-tailscale-community-zh-cn-26.288.56989~75a306d.apk",
-      "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/luci/luci-i18n-tailscale-community-zh-tw-26.288.56989~75a306d.apk",
       "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/packages/tailscale-1.104.1-r1.apk",
       "https://downloads.openwrt.org/releases/25.12.0/packages/{arch}/base/ip-full-6.18.0-r2.apk"
     ]
