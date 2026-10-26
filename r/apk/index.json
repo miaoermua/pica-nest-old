@@ -2577,7 +2577,7 @@
       "pkgmgr": "apk",
       "platform": "all",
       "arch": "all",
-      "filename": "luci-theme-material3@KawaiiHachimi-26.156.15499~38397ed-1-all-apk.pkg.tar.gz",
+      "filename": "luci-theme-material3@KawaiiHachimi-26.156.15499.38397ed-1-all-apk.pkg.tar.gz",
       "sha256": "5764e3e4cafad9df8211a1a7d12d06477bb7a4c9ebd9024edb4201477abdf55a",
       "appname": "luci-theme-material3",
       "os": "openwrt",
@@ -2591,7 +2591,7 @@
       "license": "Apache-2.0",
       "visibility": "open",
       "pica": "0.4.4",
-      "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-theme-material3@KawaiiHachimi-26.156.15499~38397ed-1-all-apk.pkg.tar.gz",
+      "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-theme-material3@KawaiiHachimi-26.156.15499.38397ed-1-all-apk.pkg.tar.gz",
       "size": 0,
       "csize": 41394,
       "manifest": {

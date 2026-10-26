@@ -49,6 +49,9 @@ jobs:
       - name: Test artifact verification
         run: python3 .github/scripts/test_artifacts.py
 
+      - name: Test asset name sanitising
+        run: python3 .github/scripts/test_sanitize_assets.py
+
       - name: Test the binary guard
         run: python3 .github/scripts/test_no_binaries.py
 

@@ -2165,7 +2165,7 @@
       "pkgmgr": "opkg",
       "platform": "all",
       "arch": "all",
-      "filename": "luci-theme-material3@KawaiiHachimi-26.156.15499~38397ed-1-all-opkg.pkg.tar.gz",
+      "filename": "luci-theme-material3@KawaiiHachimi-26.156.15499.38397ed-1-all-opkg.pkg.tar.gz",
       "sha256": "2176ff4ff6cf65fb37ebca9cebeeb2d344dd037fc0b903185df65713ea339f77",
       "appname": "luci-theme-material3",
       "os": "openwrt",
@@ -2179,7 +2179,7 @@
       "license": "Apache-2.0",
       "visibility": "open",
       "pica": "0.4.4",
-      "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-theme-material3@KawaiiHachimi-26.156.15499~38397ed-1-all-opkg.pkg.tar.gz",
+      "download_url": "https://github.com/miaoermua/pica-nest/releases/download/latest/luci-theme-material3@KawaiiHachimi-26.156.15499.38397ed-1-all-opkg.pkg.tar.gz",
       "size": 155605,
       "csize": 41434,
       "manifest": {
