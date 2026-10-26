@@ -9,7 +9,13 @@
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/24.10.0/packages/{arch}/luci/luci-app-homeproxy_26.187.07809~9bce398_all.ipk",
       "https://downloads.immortalwrt.org/releases/24.10.0/packages/{arch}/luci/luci-i18n-homeproxy-zh-cn_26.126.28706~6ac4a03_all.ipk"
-    ]
+    ],
+    "arch_url_templates": {
+      "aarch64_cortex-a53": [
+        "https://downloads.immortalwrt.org/releases/24.10.0/packages/aarch64_cortex-a53/luci/luci-app-homeproxy_26.236.50592~9b8ee64_all.ipk",
+        "https://downloads.immortalwrt.org/releases/24.10.0/packages/aarch64_cortex-a53/luci/luci-i18n-homeproxy-zh-cn_26.236.50592~9b8ee64_all.ipk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
@@ -19,6 +25,9 @@
     "pkgrel": {
       "from": "manifest",
       "fallback": 1
+    },
+    "arch_versions": {
+      "aarch64_cortex-a53": "26.236.50592~9b8ee64"
     }
   },
   "build": {

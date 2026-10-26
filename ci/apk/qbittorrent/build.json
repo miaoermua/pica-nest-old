@@ -21,11 +21,6 @@
         "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/luci/luci-app-qbittorrent-26.129.12611~06572bb.apk",
         "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/packages/qbittorrent-5.2.3-r2.apk",
         "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/luci/luci-i18n-qbittorrent-zh-cn-26.118.13608~2a84422.apk"
-      ],
-      "mipsel_24kc": [
-        "https://downloads.immortalwrt.org/snapshots/packages/mipsel_24kc/luci/luci-app-qbittorrent-26.129.12611~06572bb.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/mipsel_24kc/packages/qbittorrent-5.2.3-r2.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/mipsel_24kc/luci/luci-i18n-qbittorrent-zh-cn-25.272.42575~a0c0140.apk"
       ]
     }
   },
@@ -56,10 +51,6 @@
       {
         "platform": "arm64",
         "arch": "aarch64_cortex-a72"
-      },
-      {
-        "platform": "mipsel",
-        "arch": "mipsel_24kc"
       }
     ],
     "include_dirs": [
