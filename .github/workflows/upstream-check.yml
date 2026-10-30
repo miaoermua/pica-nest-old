@@ -7,7 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # The audit itself only reads. The bump step commits to a branch and opens a
+  # pull request, which is the only way this workflow is allowed to change the
+  # repository — nothing here merges or publishes.
+  contents: write
+  pull-requests: write
 
 concurrency:
   group: pica-upstream-check
@@ -38,7 +42,9 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t PACKAGES < <(
-            find src -mindepth 2 -maxdepth 2 -name manifest -printf '%h\n' | sort
+            # `src/<mgr>/<pkg>/manifest` is three levels below `src`; two matched
+            # nothing and the probe silently checked an empty plan.
+            find src -mindepth 3 -maxdepth 3 -name manifest -printf '%h\n' | sort
           )
           # An unreachable upstream is reported, not failed: a rate limit on a
           # scheduled run says nothing about the repository's health, and the
@@ -65,3 +71,77 @@ jobs:
           path: ${{ runner.temp }}/pica-upstream-plan.json
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Bump the packages whose upstream moved
+        id: bump
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/update_upstream.py --apply \
+            --json "$RUNNER_TEMP/upstream-updates.json"
+          if git diff --quiet -- src ci; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Validated here, and not by the pull request: a PR opened with
+          # GITHUB_TOKEN does not trigger `validate.yml`, so this is the only
+          # check the branch gets before a human looks at it.
+          python3 .github/scripts/validate_repo.py --quiet
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open or refresh the pull request
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH=upstream/auto
+
+          python3 - "$RUNNER_TEMP/upstream-updates.json" > "$RUNNER_TEMP/pr-body.md" <<'PY'
+          import json
+          import sys
+
+          plan = json.load(open(sys.argv[1], encoding="utf-8"))
+          updates = plan.get("updates") or []
+          skipped = [
+              (job, reason)
+              for job, reason in plan.get("skipped") or []
+              if "is not checked upstream" not in reason
+          ]
+
+          print("## Upstream releases the manifests have not got\n")
+          if updates:
+              print("| package | from | to |")
+              print("|---|---|---|")
+              for item in updates:
+                  print(f"| `{item['job']}` | {item['from']} | {item['to']} |")
+              print()
+          if skipped:
+              print("### Left alone\n")
+              for job, reason in skipped:
+                  print(f"- `{job}` — {reason}")
+              print()
+          print(
+              "Every change here was accepted because the release satisfies all of the job's "
+              "own regexes and every URL it produces answers. Merging triggers the build and "
+              "release, so the artifacts are published from this branch's merge commit."
+          )
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add -A -- src ci
+          COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          git commit -m "chore: bump upstream versions in $COUNT file(s)"
+          git push --force origin "$BRANCH"
+
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number' || true)
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --body-file "$RUNNER_TEMP/pr-body.md"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "Bump packages to their upstream releases" \
+              --body-file "$RUNNER_TEMP/pr-body.md"
+          fi

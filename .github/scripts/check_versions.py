@@ -127,7 +127,7 @@ def path_arch_error(url, arch):
 
 
 def pinned_tag(regex):
-    """The literal version of a `^v1\.2\.3$`-shaped tag regex, or None."""
+    r"""The literal version of a `^v1\.2\.3$`-shaped tag regex, or None."""
     if not regex or not regex.startswith("^") or not regex.endswith("$"):
         return None
     body = regex[1:-1].replace("\\.", ".")
