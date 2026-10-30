@@ -9,7 +9,13 @@
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-msd_lite-26.236.50544~cb5d434.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/msd_lite-2025.05.02~79a6c62c-r3.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-msd_lite-26.298.29275~c84adb9.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/msd_lite-2026.07.21~fa68e131-r1.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
@@ -19,6 +25,9 @@
     "pkgrel": {
       "from": "manifest",
       "fallback": 3
+    },
+    "arch_versions": {
+      "x86_64": "2026.07.21"
     }
   },
   "build": {

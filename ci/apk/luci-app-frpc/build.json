@@ -9,7 +9,13 @@
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-frpc-26.236.50544~cb5d434.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/frpc-0.66.0-r1.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-frpc-26.298.29275~c84adb9.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/frpc-0.66.0-r1.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {

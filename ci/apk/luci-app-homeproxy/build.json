@@ -7,13 +7,17 @@
   "source": {
     "provider": "http_template",
     "url_templates": [
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-homeproxy-26.223.24114~fe87581.apk",
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-i18n-homeproxy-zh-cn-26.223.24114~fe87581.apk"
+      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-homeproxy-26.288.69563~17f97c0.apk",
+      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-i18n-homeproxy-zh-cn-26.288.69563~17f97c0.apk"
     ],
     "arch_url_templates": {
-      "mipsel_24kc": [
-        "https://downloads.immortalwrt.org/snapshots/packages/mipsel_24kc/luci/luci-app-homeproxy-26.288.69563~17f97c0.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/mipsel_24kc/luci/luci-i18n-homeproxy-zh-cn-26.288.69563~17f97c0.apk"
+      "x86_64": [
+        "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-homeproxy-26.288.37172~7a64c17.apk",
+        "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-i18n-homeproxy-zh-cn-26.288.37172~7a64c17.apk"
+      ],
+      "aarch64_generic": [
+        "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-homeproxy-26.288.37172~7a64c17.apk",
+        "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-i18n-homeproxy-zh-cn-26.288.37172~7a64c17.apk"
       ]
     }
   },
@@ -27,7 +31,8 @@
       "fallback": 1
     },
     "arch_versions": {
-      "mipsel_24kc": "26.288.69563~17f97c0"
+      "x86_64": "26.288.37172~7a64c17",
+      "aarch64_generic": "26.288.37172~7a64c17"
     }
   },
   "build": {

@@ -8,7 +8,12 @@
     "provider": "http_template",
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-compat-26.236.50544~cb5d434.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-compat-26.298.29275~c84adb9.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
@@ -18,6 +23,9 @@
     "pkgrel": {
       "from": "manifest",
       "fallback": 1
+    },
+    "arch_versions": {
+      "x86_64": "26.298.29275"
     }
   },
   "build": {

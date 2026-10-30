@@ -5,15 +5,31 @@
   "enabled": true,
   "manifest": "src/apk/luci-theme-footstrap/manifest",
   "source": {
-    "provider": "http_template",
-    "url_templates": [
-      "https://repo.owfeed.org/releases/25.12/{arch}/luci-theme-footstrap-0.14.16-r1.apk"
-    ]
+    "provider": "github",
+    "repo": "VizzleTF/luci-theme-footstrap",
+    "release": {
+      "tag": {
+        "mode": "regex",
+        "regex": "^v[0-9]+(?:\\.[0-9]+)*$"
+      },
+      "assets": [
+        {
+          "name": "theme",
+          "role": "app",
+          "regex": "^luci-theme-footstrap-[0-9].*\\.apk$",
+          "required": true,
+          "target": {
+            "platform": "all",
+            "arch": "all"
+          }
+        }
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
       "from": "manifest",
-      "fallback": "0.14.16"
+      "fallback": "0.14.18"
     },
     "pkgrel": {
       "from": "manifest",
@@ -23,24 +39,8 @@
   "build": {
     "matrix": [
       {
-        "platform": "amd64",
-        "arch": "x86_64"
-      },
-      {
-        "platform": "arm64",
-        "arch": "aarch64_generic"
-      },
-      {
-        "platform": "arm64",
-        "arch": "aarch64_cortex-a53"
-      },
-      {
-        "platform": "arm64",
-        "arch": "aarch64_cortex-a72"
-      },
-      {
-        "platform": "mipsel",
-        "arch": "mipsel_24kc"
+        "platform": "all",
+        "arch": "all"
       }
     ],
     "include_dirs": [

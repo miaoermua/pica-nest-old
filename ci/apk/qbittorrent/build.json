@@ -7,22 +7,10 @@
   "source": {
     "provider": "http_template",
     "url_templates": [
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-app-qbittorrent-26.129.12611~06572bb.apk",
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/packages/qbittorrent-5.2.3-r2.apk",
-      "https://downloads.immortalwrt.org/snapshots/packages/{arch}/luci/luci-i18n-qbittorrent-zh-cn-25.257.46572~f0567b4.apk"
-    ],
-    "arch_url_templates": {
-      "aarch64_generic": [
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_generic/luci/luci-app-qbittorrent-26.129.12611~06572bb.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_generic/packages/qbittorrent-5.2.3-r2.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_generic/luci/luci-i18n-qbittorrent-zh-cn-26.118.13608~2a84422.apk"
-      ],
-      "aarch64_cortex-a53": [
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/luci/luci-app-qbittorrent-26.129.12611~06572bb.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/packages/qbittorrent-5.2.3-r2.apk",
-        "https://downloads.immortalwrt.org/snapshots/packages/aarch64_cortex-a53/luci/luci-i18n-qbittorrent-zh-cn-26.118.13608~2a84422.apk"
-      ]
-    }
+      "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-qbittorrent-26.236.50544~cb5d434.apk",
+      "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/qbittorrent-5.2.3-r2.apk",
+      "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-i18n-qbittorrent-zh-cn-26.236.50544~cb5d434.apk"
+    ]
   },
   "versioning": {
     "pkgver": {
@@ -36,10 +24,6 @@
   },
   "build": {
     "matrix": [
-      {
-        "platform": "amd64",
-        "arch": "x86_64"
-      },
       {
         "platform": "arm64",
         "arch": "aarch64_generic"

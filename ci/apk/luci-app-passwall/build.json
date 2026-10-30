@@ -9,7 +9,13 @@
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-passwall-26.9.1-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-i18n-passwall-zh-cn-26.246.30323~9baefa5.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-passwall-26.10.22-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-i18n-passwall-zh-cn-26.298.29275~c84adb9.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
@@ -19,6 +25,9 @@
     "pkgrel": {
       "from": "manifest",
       "fallback": 1
+    },
+    "arch_versions": {
+      "x86_64": "26.10.22"
     }
   },
   "build": {

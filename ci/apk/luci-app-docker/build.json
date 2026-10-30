@@ -13,7 +13,17 @@
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/dockerd-29.6.1-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/e2fsprogs-1.47.3-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/fdisk-2.41.5-r1.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-docker-1-r12.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-compat-26.298.29275~c84adb9.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/docker-29.6.1-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/dockerd-29.6.1-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/e2fsprogs-1.47.3-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/fdisk-2.41.5-r1.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {

@@ -1,6 +1,6 @@
 pkgname = luci-app-homeproxy
 appname = homeproxy
-pkgver = 26.223.24114~fe87581
+pkgver = 26.288.69563~17f97c0
 pkgrel = 1
 os = openwrt
 platform = all

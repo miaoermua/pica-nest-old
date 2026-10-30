@@ -9,7 +9,13 @@
     "url_templates": [
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-cloudflared-1.2-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/cloudflared-2026.6.1-r1.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-cloudflared-1.2-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/cloudflared-2026.8.3-r1.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {

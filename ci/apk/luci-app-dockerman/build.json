@@ -13,7 +13,17 @@
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/docker-compose-5.1.4-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/ttyd-1.7.7-r1.apk",
       "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/ucode-mod-socket-2026.01.16~85922056-r1.apk"
-    ]
+    ],
+    "arch_url_templates": {
+      "x86_64": [
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/luci/luci-app-dockerman-26.298.29275~c84adb9.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/docker-29.6.1-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/dockerd-29.6.1-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/docker-compose-5.1.4-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/packages/ttyd-1.7.7-r1.apk",
+        "https://downloads.immortalwrt.org/releases/25.12.2/packages/{arch}/base/ucode-mod-socket-2026.01.16~85922056-r2.apk"
+      ]
+    }
   },
   "versioning": {
     "pkgver": {
@@ -23,6 +33,9 @@
     "pkgrel": {
       "from": "manifest",
       "fallback": 1
+    },
+    "arch_versions": {
+      "x86_64": "26.298.29275"
     }
   },
   "build": {
