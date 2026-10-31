@@ -55,7 +55,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          # One commit, and no blobs until something asks for them. The history
+          # is 1.38 GB because the old publish job committed its own artifacts
+          # under r/packages/ — 164 files, 1.32 GB, retired on 2026-10-22 and
+          # still reachable from every commit before that. The checked-out tree
+          # itself is 1.3 MB, so a full clone fetches a thousand times what the
+          # build reads, on every run.
+          fetch-depth: 1
+          filter: blob:none
 
       - name: Detect packages to build
         id: detect
@@ -78,6 +85,14 @@ jobs:
               exit 1
             fi
           else
+            # The checkout holds one commit. The diff needs the commit this push
+            # started from, so fetch that one commit: `git diff --name-status`
+            # reads trees, and --filter=blob:none keeps even those cheap. Asking
+            # for the whole history instead is what pulled 1.38 GB per run.
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 --filter=blob:none origin "$BEFORE_SHA" \
+                || echo "warning: could not fetch $BEFORE_SHA; the diff below will refuse to guess" >&2
+            fi
             python3 .github/scripts/changed_packages.py \
               --base "$BEFORE_SHA" --head "$HEAD_SHA" \
               --github-output "$GITHUB_OUTPUT"

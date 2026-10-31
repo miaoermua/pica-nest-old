@@ -5,6 +5,7 @@ Uses the standard library only: the repository has no Python test framework and
 this keeps the change-detection logic runnable on a bare runner.
 """
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from changed_packages import (  # noqa: E402
     Change,
     classify,
+    diff_changes,
     full_plan,
     is_zero_sha,
     parse_name_status,
@@ -209,6 +211,63 @@ class RangeTest(unittest.TestCase):
         self.assertTrue(is_zero_sha("0" * 40))
         self.assertFalse(is_zero_sha("1" * 40))
         self.assertFalse(is_zero_sha(""))
+
+
+class DiffAcrossUnrelatedRootsTest(unittest.TestCase):
+    """The diff still answers when the two commits share no history.
+
+    A shallow clone fetches the base commit on its own, with no ancestor in
+    common, and `git diff base...head` needs a merge base it cannot compute.
+    Falling back to the two-dot form is what keeps a shallow build from
+    refusing to work out what changed.
+    """
+
+    def git(self, cwd, *args):
+        return subprocess.run(
+            ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    def test_two_roots_still_produce_a_change_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.git(tmp, "init", "-q")
+            self.git(tmp, "config", "user.email", "ci@example.com")
+            self.git(tmp, "config", "user.name", "ci")
+
+            os.makedirs(os.path.join(tmp, "ci", "opkg", "demo"))
+            with open(os.path.join(tmp, "ci", "opkg", "demo", "build.json"), "w") as handle:
+                handle.write("{}\n")
+            self.git(tmp, "add", "-A")
+            self.git(tmp, "commit", "-q", "-m", "first root")
+            base = self.git(tmp, "rev-parse", "HEAD")
+
+            # A second root: nothing above is an ancestor of it.
+            self.git(tmp, "checkout", "-q", "--orphan", "other")
+            self.git(tmp, "rm", "-rq", "--cached", ".")
+            for name in os.listdir(tmp):
+                if name != ".git":
+                    path = os.path.join(tmp, name)
+                    if os.path.isdir(path):
+                        import shutil
+
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+            os.makedirs(os.path.join(tmp, "ci", "opkg", "other"))
+            with open(os.path.join(tmp, "ci", "opkg", "other", "build.json"), "w") as handle:
+                handle.write("{}\n")
+            self.git(tmp, "add", "-A")
+            self.git(tmp, "commit", "-q", "-m", "second root")
+            head = self.git(tmp, "rev-parse", "HEAD")
+
+            previous = os.getcwd()
+            os.chdir(tmp)
+            try:
+                changes = diff_changes(base, head)
+            finally:
+                os.chdir(previous)
+
+            paths = {path for change in changes for path in change.paths()}
+            self.assertIn("ci/opkg/other/build.json", paths)
 
 
 if __name__ == "__main__":

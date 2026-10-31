@@ -236,11 +236,23 @@ def path_exists_at(commit, path):
 
 
 def diff_changes(base, head):
-    proc = _git("diff", "--name-status", "-z", "-M", "--diff-filter=ACMRDT", f"{base}...{head}")
-    if proc.returncode != 0:
-        detail = proc.stderr.decode("utf-8", "replace").strip()
-        raise RuntimeError(detail or "git diff failed")
-    return parse_name_status(proc.stdout)
+    """Changed paths between two commits, tolerating a shallow checkout.
+
+    `base...head` is the right range when the two share history: it reports
+    what this push did, not everything upstream changed meanwhile. A shallow
+    clone has no merge base to compute it from — the fetched base sits on its
+    own root — so the two-dot form is used instead. That form lists whatever
+    differs between the two trees: identical for a fast-forward push, and a
+    superset for anything else. Over-reporting costs a rebuild; under-reporting
+    would skip a package, so the trade is the right way round.
+    """
+    detail = ""
+    for spec in (f"{base}...{head}", f"{base}..{head}"):
+        proc = _git("diff", "--name-status", "-z", "-M", "--diff-filter=ACMRDT", spec)
+        if proc.returncode == 0:
+            return parse_name_status(proc.stdout)
+        detail = proc.stderr.decode("utf-8", "replace").strip() or detail
+    raise RuntimeError(detail or "git diff failed")
 
 
 def write_outputs(path, plan_result, mode):
